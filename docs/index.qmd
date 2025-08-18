@@ -1,0 +1,1403 @@
+---
+title: "Análisis de Lactancia Materna en Chile 2023-2024"
+lang: es
+author:
+  - name: "Análisis de Datos de Salud"
+    
+format:
+  html:
+    toc: true
+    number-sections: true
+    code-fold: true
+execute:
+  warning: false
+  message: false
+  fig-width: 12
+  fig-height: 10
+---
+
+# Análisis de Lactancia Materna en Chile 2023-2024
+
+## Introducción
+
+Este análisis examina los patrones de lactancia materna en Chile durante los años 2023 y 2024, considerando diferentes tipos de alimentación infantil, meses de vida del lactante y características demográficas.
+
+## Métodos
+
+### Configuración inicial y carga de paquetes
+
+```{r message=FALSE, warning=FALSE}
+install_and_load_packages <- function(packages) {
+  for (package in packages) {
+    if (!require(package, character.only = TRUE)) {
+      install.packages(package)
+      library(package, character.only = TRUE)
+    }
+  }
+}
+
+necessary_packages <- c("knitr", "tidyverse", "naniar", "kableExtra", 
+                        "DT", "readr", "data.table", "stringr", "ggpubr", 
+                        "scales", "plotly", "chilemapas")
+
+install_and_load_packages(necessary_packages)
+
+opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE)
+
+Sys.setenv("VROOM_CONNECTION_SIZE" = 100000000000)
+```
+
+### Carga y procesamiento de datos
+
+```{r}
+# Cargar archivos de datos
+file_paths <- list.files(paste0(gsub("/docs", "", getwd()), "/data/"), 
+                         pattern = "SerieA_.*\\.(txt|csv)$", full.names = TRUE)
+
+lista_datos <- lapply(file_paths, function(file) {
+  fread(file, sep = ";", encoding = ifelse(grepl("2024", file), "Latin-1", "UTF-8"))
+})
+
+names(lista_datos) <- gsub(".*_(\\d{4}).*", "\\1", basename(file_paths))
+
+# Filtrar por comunas de la Región Metropolitana
+lista_datos <- lapply(lista_datos, function(dt) {
+  dt[grepl("^13", as.character(IdComuna))]
+})
+
+# Códigos de lactancia a filtrar
+codigos_lactancia <- c("A0200002",  # Lactancia Materna Exclusiva
+                       "03500359",  # Lactancia Materna / Fórmula Láctea
+                       "03500360",  # Fórmula Láctea
+                       "A0200003",  # Lactancia Materna más Alimentación Complementaria
+                       "03600140",  # LM / Fórmula / Alimentación Complementaria
+                       "03600150",  # Fórmula más Alimentación Complementaria
+                       "A0200001")  # Número de niños y niñas controlados (denominador)
+
+# Aplicar filtro de códigos de lactancia
+lista_datos_lactancia <- lapply(lista_datos, function(dt) {
+  dt[CodigoPrestacion %in% codigos_lactancia]
+})
+
+# Función para procesar datos por año
+procesar_datos_año <- function(dt, año) {
+  
+  # Identificar columnas relevantes según el año
+  if (año == "2023") {
+    # Para 2023: Col01 (TOTAL), Col03 (1° mes), Col04 (3° mes), Col05 (6° mes), Col09 (Pueblos Orig), Col10 (Migrantes)
+    columnas_interes <- c("Col01", "Col03", "Col04", "Col05", "Col08", "Col09")
+    nombres_meses <- c("TOTAL", "1° mes", "3° mes", "6° mes", "Pueblos Originarios", "Migrantes")
+  } else if (año == "2024") {
+    # Para 2024: Col01 (TOTAL), Col04 (1° mes), Col05 (3° mes), Col06 (6° mes), Col09 (Pueblos Orig), Col10 (Migrantes)
+    columnas_interes <- c("Col01", "Col04", "Col05", "Col06", "Col09", "Col10")
+    nombres_meses <- c("TOTAL", "1° mes", "3° mes", "6° mes", "Pueblos Originarios", "Migrantes")
+  }
+  
+  # Convertir columnas a numéricas
+  dt[, (columnas_interes) := lapply(.SD, function(x) as.numeric(as.character(x))), 
+     .SDcols = columnas_interes]
+  
+  # Sumar por código de prestación
+  dt_sum <- dt[, lapply(.SD, sum, na.rm = TRUE), 
+               by = .(CodigoPrestacion), 
+               .SDcols = columnas_interes]
+  
+  # Renombrar columnas
+  setnames(dt_sum, columnas_interes, nombres_meses)
+  
+  # Agregar descripción de los códigos
+  dt_sum[, Tipo_Alimentacion := recode(CodigoPrestacion,
+    "A0200002" = "Lactancia Materna Exclusiva",
+    "03500359" = "Lactancia Materna / Fórmula Láctea", 
+    "03500360" = "Fórmula Láctea",
+    "A0200003" = "Lactancia Materna + Alimentación Complementaria",
+    "03600140" = "LM / Fórmula / Alimentación Complementaria",
+    "03600150" = "Fórmula + Alimentación Complementaria",
+    "A0200001" = "Total Niños/as Controlados"
+  )]
+  
+  return(dt_sum)
+}
+
+# Procesar datos para 2023 y 2024
+datos_2023 <- procesar_datos_año(lista_datos_lactancia[["2023"]], "2023")
+datos_2024 <- procesar_datos_año(lista_datos_lactancia[["2024"]], "2024")
+
+# Procesar datos por comuna para análisis geográfico
+procesar_datos_comuna <- function(dt, año) {
+  if (año == "2023") {
+    columnas_interes <- c("Col01", "Col03", "Col04", "Col05", "Col08", "Col09")
+    nombres_meses <- c("TOTAL", "1° mes", "3° mes", "6° mes", "Pueblos Originarios", "Migrantes")
+  } else if (año == "2024") {
+    columnas_interes <- c("Col01", "Col04", "Col05", "Col06", "Col09", "Col10")
+    nombres_meses <- c("TOTAL", "1° mes", "3° mes", "6° mes", "Pueblos Originarios", "Migrantes")
+  }
+  
+  dt[, (columnas_interes) := lapply(.SD, function(x) as.numeric(as.character(x))), 
+     .SDcols = columnas_interes]
+  
+  dt_sum <- dt[, lapply(.SD, sum, na.rm = TRUE), 
+               by = .(CodigoPrestacion, IdComuna), 
+               .SDcols = columnas_interes]
+  
+  setnames(dt_sum, columnas_interes, nombres_meses)
+  
+  dt_sum[, Tipo_Alimentacion := recode(CodigoPrestacion,
+    "A0200002" = "Lactancia Materna Exclusiva",
+    "03500359" = "Lactancia Materna / Fórmula Láctea", 
+    "03500360" = "Fórmula Láctea",
+    "A0200003" = "Lactancia Materna + Alimentación Complementaria",
+    "03600140" = "LM / Fórmula / Alimentación Complementaria",
+    "03600150" = "Fórmula + Alimentación Complementaria",
+    "A0200001" = "Total Niños/as Controlados"
+  )]
+  
+  return(dt_sum)
+}
+
+datos_2023_comuna <- procesar_datos_comuna(lista_datos_lactancia[["2023"]], "2023")
+datos_2024_comuna <- procesar_datos_comuna(lista_datos_lactancia[["2024"]], "2024")
+```
+
+### Cálculo de porcentajes
+
+```{r}
+# Función para calcular porcentajes
+calcular_porcentajes <- function(dt, año) {
+  
+  # Obtener el total de niños controlados (denominador)
+  denominador <- dt[CodigoPrestacion == "A0200001"]
+  
+  # Obtener columnas numéricas (excluyendo CodigoPrestacion y Tipo_Alimentacion)
+  cols_numericas <- names(dt)[!names(dt) %in% c("CodigoPrestacion", "Tipo_Alimentacion", "IdComuna")]
+  
+  # Crear tabla de porcentajes
+  dt_porcentajes <- copy(dt)
+  
+  for (col in cols_numericas) {
+    dt_porcentajes[, paste0(col, "_Porcentaje") := 
+                    round(get(col) / denominador[[col]] * 100, 2)]
+  }
+  
+  # Reorganizar columnas
+  cols_orden <- c("CodigoPrestacion", "Tipo_Alimentacion")
+  if ("IdComuna" %in% names(dt)) cols_orden <- c(cols_orden, "IdComuna")
+  for (col in cols_numericas) {
+    cols_orden <- c(cols_orden, col, paste0(col, "_Porcentaje"))
+  }
+  
+  setcolorder(dt_porcentajes, cols_orden)
+  
+  return(dt_porcentajes)
+}
+
+# Calcular porcentajes para ambos años
+datos_2023_pct <- calcular_porcentajes(datos_2023, "2023")
+datos_2024_pct <- calcular_porcentajes(datos_2024, "2024")
+
+# Calcular porcentajes por comuna
+calcular_porcentajes_comuna <- function(dt, año) {
+  
+  # Obtener columnas numéricas
+  cols_numericas <- names(dt)[!names(dt) %in% c("CodigoPrestacion", "Tipo_Alimentacion", "IdComuna")]
+  
+  # Crear tabla de porcentajes
+  dt_porcentajes <- copy(dt)
+  
+  # Para cada comuna
+  comunas <- unique(dt$IdComuna)
+  
+  for (comuna in comunas) {
+    denominador_comuna <- dt[CodigoPrestacion == "A0200001" & IdComuna == comuna]
+    
+    if (nrow(denominador_comuna) > 0) {
+      for (col in cols_numericas) {
+        dt_porcentajes[IdComuna == comuna, paste0(col, "_Porcentaje") := 
+                      round(get(col) / denominador_comuna[[col]] * 100, 2)]
+      }
+    }
+  }
+  
+  return(dt_porcentajes)
+}
+
+datos_2023_comuna_pct <- calcular_porcentajes_comuna(datos_2023_comuna, "2023")
+datos_2024_comuna_pct <- calcular_porcentajes_comuna(datos_2024_comuna, "2024")
+```
+
+## Resultados
+
+### Análisis de Totales Generales
+
+```{r}
+# Crear tabla comparativa de TOTALES
+totales_2023 <- datos_2023_pct %>%
+  filter(CodigoPrestacion != "A0200001") %>%
+  select(Tipo_Alimentacion, TOTAL, TOTAL_Porcentaje) %>%
+  rename(`Total 2023` = TOTAL, `% 2023` = TOTAL_Porcentaje)
+
+totales_2024 <- datos_2024_pct %>%
+  filter(CodigoPrestacion != "A0200001") %>%
+  select(Tipo_Alimentacion, TOTAL, TOTAL_Porcentaje) %>%
+  rename(`Total 2024` = TOTAL, `% 2024` = TOTAL_Porcentaje)
+
+# Unir las tablas
+tabla_totales <- totales_2023 %>%
+  left_join(totales_2024, by = "Tipo_Alimentacion") %>%
+  mutate(
+    `Cambio Absoluto` = `Total 2024` - `Total 2023`,
+    `Cambio %` = round((`% 2024` - `% 2023`), 2)
+  ) %>%
+  arrange(desc(`% 2024`))
+
+# Mostrar tabla con opciones de descarga
+datatable(
+  tabla_totales,
+  caption = "Comparación de Totales por Tipo de Alimentación 2023 vs 2024",
+  filter = 'none',
+  extensions = c('Buttons'),
+  options = list(
+    dom = 'Bfrtip',
+    buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+    pageLength = 10,
+    scrollX = TRUE,
+    autoWidth = TRUE,
+    columnDefs = list(
+      list(className = 'dt-center', targets = '_all')
+    )
+  )
+) %>%
+  formatStyle(
+    'Cambio %',
+    color = styleInterval(0, c('red', 'green')),
+    fontWeight = 'bold'
+  ) %>%
+  formatStyle(
+    c('% 2023', '% 2024'),
+    backgroundColor = styleInterval(c(10, 25, 50), 
+                                   c('#f0f0f0', '#d4edda', '#b8daff', '#f8d7da'))
+  )
+```
+
+#### Visualización de Totales
+
+```{r fig.height=6, fig.width=10}
+# Preparar datos para gráfico de totales
+datos_totales_graf <- tabla_totales %>%
+  select(Tipo_Alimentacion, `% 2023`, `% 2024`) %>%
+  pivot_longer(
+    cols = c(`% 2023`, `% 2024`),
+    names_to = "Año",
+    values_to = "Porcentaje"
+  ) %>%
+  mutate(Año = str_extract(Año, "\\d{4}"))
+
+# Crear gráfico de barras comparativo con porcentajes
+p_totales <- ggplot(datos_totales_graf, aes(x = reorder(Tipo_Alimentacion, -Porcentaje), 
+                                             y = Porcentaje, 
+                                             fill = Año)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = paste0(round(Porcentaje, 1), "%")), 
+            position = position_dodge(width = 0.9),
+            vjust = -0.5, size = 3.5,
+            show.legend = FALSE) +
+  scale_fill_manual(values = c("2023" = "#2166ac", "2024" = "#b2182b")) +
+  labs(
+    title = "Distribución Total de Tipos de Alimentación Infantil",
+    subtitle = "Comparación de Totales Generales 2023 vs 2024",
+    x = "Tipo de Alimentación",
+    y = "Porcentaje (%)",
+    fill = "Año"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 9),
+    legend.position = "top"
+  ) +
+  ylim(0, max(datos_totales_graf$Porcentaje) * 1.15)
+
+print(p_totales)
+```
+
+### Lactancia Materna en Chile - Año 2023
+
+```{r}
+# Preparar tabla para visualización 2023
+tabla_2023 <- datos_2023_pct[CodigoPrestacion != "A0200001"] %>%
+  select(-CodigoPrestacion) %>%
+  arrange(Tipo_Alimentacion)
+
+# Crear tabla interactiva con opciones de descarga
+datatable(
+  tabla_2023,
+  caption = "Tipos de Lactancia según Meses de Vida - Año 2023",
+  filter = 'top',
+  extensions = c('Buttons'),
+  options = list(
+    dom = 'Bfrtip',
+    buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+    pageLength = 10,
+    scrollX = TRUE,
+    autoWidth = TRUE,
+    columnDefs = list(
+      list(className = 'dt-center', targets = '_all')
+    )
+  )
+) %>%
+  formatStyle(
+    columns = names(tabla_2023)[grepl("Porcentaje", names(tabla_2023))],
+    backgroundColor = styleInterval(c(25, 50, 75), 
+                                   c('#fee5d9', '#fcae91', '#fb6a4a', '#cb181d'))
+  )
+```
+
+### Lactancia Materna en Chile - Año 2024
+
+```{r}
+# Preparar tabla para visualización 2024
+tabla_2024 <- datos_2024_pct[CodigoPrestacion != "A0200001"] %>%
+  select(-CodigoPrestacion) %>%
+  arrange(Tipo_Alimentacion)
+
+datatable(
+  tabla_2024,
+  caption = "Tipos de Lactancia según Meses de Vida y Características Demográficas - Año 2024",
+  filter = 'top',
+  extensions = c('Buttons'),
+  options = list(
+    dom = 'Bfrtip',
+    buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+    pageLength = 10,
+    scrollX = TRUE,
+    autoWidth = TRUE,
+    columnDefs = list(
+      list(className = 'dt-center', targets = '_all')
+    )
+  )
+) %>%
+  formatStyle(
+    columns = names(tabla_2024)[grepl("Porcentaje", names(tabla_2024))],
+    backgroundColor = styleInterval(c(25, 50, 75), 
+                                   c('#deebf7', '#9ecae1', '#4292c6', '#084594'))
+  )
+```
+
+### Análisis Comparativo 2023-2024
+
+```{r}
+# Preparar datos para comparación (meses comunes)
+meses_comunes <- c("1° mes", "3° mes", "6° mes")
+categorias_todas <- c("TOTAL", "1° mes", "3° mes", "6° mes", "Pueblos Originarios", "Migrantes")
+
+# Función para preparar datos para gráfico
+preparar_datos_grafico <- function(dt, año, meses) {
+  # Verificar que las columnas existan
+  cols_to_select <- paste0(meses, "_Porcentaje")
+  cols_disponibles <- cols_to_select[cols_to_select %in% names(dt)]
+  
+  dt_long <- dt[CodigoPrestacion != "A0200001"] %>%
+    select(Tipo_Alimentacion, all_of(cols_disponibles)) %>%
+    pivot_longer(
+      cols = ends_with("_Porcentaje"),
+      names_to = "Mes",
+      values_to = "Porcentaje"
+    ) %>%
+    mutate(
+      Mes = str_remove(Mes, "_Porcentaje"),
+      Año = año
+    )
+  return(dt_long)
+}
+
+# Preparar datos para ambos años (solo meses comunes, sin TOTAL para gráfico de evolución)
+datos_graf_2023 <- preparar_datos_grafico(datos_2023_pct, "2023", meses_comunes)
+datos_graf_2024 <- preparar_datos_grafico(datos_2024_pct, "2024", meses_comunes)
+
+# Combinar datos
+datos_comparacion <- bind_rows(datos_graf_2023, datos_graf_2024)
+
+# Ordenar factores de meses
+datos_comparacion$Mes <- factor(datos_comparacion$Mes, 
+                                levels = meses_comunes)
+```
+
+### Visualizaciones
+
+#### Evolución de Lactancia Materna Exclusiva (1° a 6° mes)
+
+```{r fig.height=6, fig.width=10}
+# Filtrar solo Lactancia Materna Exclusiva
+lme_data <- datos_comparacion %>%
+  filter(Tipo_Alimentacion == "Lactancia Materna Exclusiva" & 
+         Mes %in% c("1° mes", "3° mes", "6° mes"))
+
+# Ordenar factor de meses
+lme_data$Mes <- factor(lme_data$Mes, levels = c("1° mes", "3° mes", "6° mes"))
+
+p1 <- ggplot(lme_data, aes(x = Mes, y = Porcentaje, 
+                           group = Año, color = Año)) +
+  geom_line(size = 1.5) +
+  geom_point(size = 3) +
+  geom_text(aes(label = paste0(round(Porcentaje, 1), "%")), 
+            vjust = -1, size = 3.5,
+            show.legend = FALSE) +
+  scale_color_manual(values = c("2023" = "#2166ac", "2024" = "#b2182b")) +
+  labs(
+    title = "Evolución de Lactancia Materna Exclusiva en los Primeros 6 Meses",
+    subtitle = "Comparación 2023 vs 2024",
+    x = "Mes de Vida",
+    y = "Porcentaje (%)",
+    color = "Año"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "top"
+  ) +
+  ylim(0, max(lme_data$Porcentaje) * 1.2)
+
+print(p1)
+```
+
+#### Comparación de Todos los Tipos de Alimentación (1° a 6° mes)
+
+```{r fig.height=8, fig.width=12}
+# Filtrar solo los meses del 1° al 6°
+datos_comp_filtrado <- datos_comparacion %>%
+  filter(Mes %in% c("1° mes", "3° mes", "6° mes"))
+
+# Ordenar factor de meses
+datos_comp_filtrado$Mes <- factor(datos_comp_filtrado$Mes, 
+                                  levels = c("1° mes", "3° mes", "6° mes"))
+
+# Calcular posición para las etiquetas
+datos_comp_filtrado <- datos_comp_filtrado %>%
+  group_by(Año, Mes) %>%
+  mutate(pos = cumsum(Porcentaje) - 0.5 * Porcentaje) %>%
+  ungroup()
+
+p2 <- ggplot(datos_comp_filtrado, aes(x = Mes, y = Porcentaje, 
+                                      fill = Tipo_Alimentacion)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = paste0(round(Porcentaje, 1), "%")), 
+            position = position_dodge(width = 0.9),
+            vjust = -0.5, size = 3,
+            show.legend = FALSE) +
+  facet_wrap(~ Año, ncol = 2) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(
+    title = "Distribución de Tipos de Alimentación Infantil (1° a 6° mes)",
+    subtitle = "Comparación 2023 vs 2024",
+    x = "Mes de Vida",
+    y = "Porcentaje (%)",
+    fill = "Tipo de Alimentación"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom",
+    legend.text = element_text(size = 9)
+  ) +
+  ylim(0, max(datos_comp_filtrado$Porcentaje) * 1.15)
+
+print(p2)
+```
+
+#### Análisis de Poblaciones Específicas - Comparación 2023 vs 2024
+
+```{r fig.height=7, fig.width=12}
+# Datos de pueblos originarios y migrantes para ambos años
+datos_pob_2023 <- datos_2023_pct[CodigoPrestacion != "A0200001"] %>%
+  select(Tipo_Alimentacion, `Pueblos Originarios_Porcentaje`, `Migrantes_Porcentaje`) %>%
+  pivot_longer(
+    cols = ends_with("_Porcentaje"),
+    names_to = "Población",
+    values_to = "Porcentaje"
+  ) %>%
+  mutate(
+    Población = str_remove(Población, "_Porcentaje"),
+    Año = "2023"
+  )
+
+datos_pob_2024 <- datos_2024_pct[CodigoPrestacion != "A0200001"] %>%
+  select(Tipo_Alimentacion, `Pueblos Originarios_Porcentaje`, `Migrantes_Porcentaje`) %>%
+  pivot_longer(
+    cols = ends_with("_Porcentaje"),
+    names_to = "Población",
+    values_to = "Porcentaje"
+  ) %>%
+  mutate(
+    Población = str_remove(Población, "_Porcentaje"),
+    Año = "2024"
+  )
+
+# Combinar datos
+datos_poblacion_completo <- bind_rows(datos_pob_2023, datos_pob_2024)
+
+# Crear gráfico comparativo
+p3 <- ggplot(datos_poblacion_completo, aes(x = Tipo_Alimentacion, y = Porcentaje, 
+                                           fill = interaction(Población, Año))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = paste0(round(Porcentaje, 1), "%")), 
+            position = position_dodge(width = 0.9),
+            hjust = -0.5, size = 3,
+            show.legend = FALSE) +
+  coord_flip() +
+  scale_fill_manual(
+    values = c(
+      "Pueblos Originarios.2023" = "#ff7f00",
+      "Pueblos Originarios.2024" = "#ff4500",
+      "Migrantes.2023" = "#377eb8",
+      "Migrantes.2024" = "#1e5090"
+    ),
+    labels = c(
+      "Pueblos Originarios.2023" = "Pueblos Orig. 2023",
+      "Pueblos Originarios.2024" = "Pueblos Orig. 2024",
+      "Migrantes.2023" = "Migrantes 2023",
+      "Migrantes.2024" = "Migrantes 2024"
+    )
+  ) +
+  labs(
+    title = "Tipos de Lactancia en Poblaciones Específicas - Comparación 2023 vs 2024",
+    subtitle = "Pueblos Originarios y Migrantes",
+    x = "Tipo de Alimentación",
+    y = "Porcentaje (%)",
+    fill = "Población/Año"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    axis.text.y = element_text(size = 10),
+    legend.position = "top"
+  ) +
+  ylim(0, max(datos_poblacion_completo$Porcentaje) * 1.15)  # Cambio aquí: xlim por ylim
+
+print(p3)
+
+# Tabla comparativa de poblaciones específicas con opciones de descarga
+tabla_pob_comp <- datos_poblacion_completo %>%
+  pivot_wider(
+    names_from = c(Población, Año),
+    values_from = Porcentaje,
+    names_sep = " "
+  ) %>%
+  mutate(
+    `Cambio P.O. (pp)` = round(`Pueblos Originarios 2024` - `Pueblos Originarios 2023`, 2),
+    `Cambio Mig. (pp)` = round(`Migrantes 2024` - `Migrantes 2023`, 2)
+  )
+
+datatable(
+  tabla_pob_comp,
+  caption = "Comparación de Lactancia en Poblaciones Específicas 2023 vs 2024",
+  filter = 'none',
+  extensions = c('Buttons'),
+  options = list(
+    dom = 'Bfrtip',
+    buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+    pageLength = 10,
+    scrollX = TRUE,
+    autoWidth = TRUE
+  )
+) %>%
+  formatStyle(
+    c('Cambio P.O. (pp)', 'Cambio Mig. (pp)'),
+    color = styleInterval(0, c('red', 'green')),
+    fontWeight = 'bold'
+  )
+```
+
+### Análisis por Comuna
+
+#### Lactancia Materna Exclusiva por Comuna
+
+```{r fig.height=10, fig.width=14}
+# Preparar datos de LME por comuna
+lme_comuna_2023 <- datos_2023_comuna_pct %>%
+  filter(Tipo_Alimentacion == "Lactancia Materna Exclusiva") %>%
+  select(IdComuna, `TOTAL_Porcentaje`) %>%
+  rename(`LME_2023` = `TOTAL_Porcentaje`) %>%
+  mutate(Año = "2023")
+
+lme_comuna_2024 <- datos_2024_comuna_pct %>%
+  filter(Tipo_Alimentacion == "Lactancia Materna Exclusiva") %>%
+  select(IdComuna, `TOTAL_Porcentaje`) %>%
+  rename(`LME_2024` = `TOTAL_Porcentaje`) %>%
+  mutate(Año = "2024")
+
+# Mapeo de códigos a nombres de comunas
+nombres_comunas <- c(
+  "13101" = "Santiago", "13102" = "Cerrillos", "13103" = "Cerro Navia",
+  "13104" = "Conchalí", "13105" = "El Bosque", "13106" = "Estación Central",
+  "13107" = "Huechuraba", "13108" = "Independencia", "13109" = "La Cisterna",
+  "13110" = "La Florida", "13111" = "La Granja", "13112" = "La Pintana",
+  "13113" = "La Reina", "13114" = "Las Condes", "13115" = "Lo Barnechea",
+  "13116" = "Lo Espejo", "13117" = "Lo Prado", "13118" = "Macul",
+  "13119" = "Maipú", "13120" = "Ñuñoa", "13121" = "Pedro Aguirre Cerda",
+  "13122" = "Peñalolén", "13123" = "Providencia", "13124" = "Pudahuel",
+  "13125" = "Quilicura", "13126" = "Quinta Normal", "13127" = "Recoleta",
+  "13128" = "Renca", "13129" = "San Joaquín", "13130" = "San Miguel",
+  "13131" = "San Ramón", "13132" = "Vitacura", "13201" = "Puente Alto",
+  "13202" = "Pirque", "13203" = "San José de Maipo", "13301" = "Colina",
+  "13302" = "Lampa", "13303" = "Tiltil", "13401" = "San Bernardo",
+  "13402" = "Buin", "13403" = "Calera de Tango", "13404" = "Paine",
+  "13501" = "Melipilla", "13502" = "Alhué", "13503" = "Curacaví",
+  "13504" = "María Pinto", "13505" = "San Pedro", "13601" = "Talagante",
+  "13602" = "El Monte", "13603" = "Isla de Maipo", "13604" = "Padre Hurtado",
+  "13605" = "Peñaflor"
+)
+
+# Combinar datos y agregar nombres
+lme_comuna_comparacion <- lme_comuna_2023 %>%
+  full_join(lme_comuna_2024 %>% select(-Año), by = "IdComuna") %>%
+  mutate(
+    Comuna = nombres_comunas[as.character(IdComuna)],
+    Cambio = LME_2024 - LME_2023
+  ) %>%
+  filter(!is.na(Comuna))
+
+# Visualización de LME por comuna
+lme_comuna_long <- lme_comuna_comparacion %>%
+  select(Comuna, LME_2023, LME_2024) %>%
+  pivot_longer(cols = c(LME_2023, LME_2024), 
+               names_to = "Año", 
+               values_to = "Porcentaje") %>%
+  mutate(Año = str_extract(Año, "\\d{4}"))
+
+p_comuna <- ggplot(lme_comuna_long, 
+                   aes(x = reorder(Comuna, Porcentaje), 
+                       y = Porcentaje, 
+                       fill = Año)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = paste0(round(Porcentaje, 1), "%")), 
+            position = position_dodge(width = 0.9),
+            hjust = -0.2, size = 2.5,
+            show.legend = FALSE) +
+  coord_flip() +
+  scale_fill_manual(values = c("2023" = "#2166ac", "2024" = "#b2182b")) +
+  labs(
+    title = "Lactancia Materna Exclusiva por Comuna",
+    subtitle = "Comparación 2023 vs 2024",
+    x = "Comuna",
+    y = "Porcentaje (%)",
+    fill = "Año"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    axis.text.y = element_text(size = 8),
+    legend.position = "top"
+  )
+
+print(p_comuna)
+```
+
+#### Mapa de Lactancia Materna Exclusiva
+
+```{r fig.height=10, fig.width=16}
+# Preparar datos para el mapa
+map_lme_2023 <- mapa_comunas %>%
+  filter(codigo_region == 13) %>%
+  rename("IdComuna" = codigo_comuna) %>%
+  mutate(IdComuna = as.character(IdComuna)) %>%
+  left_join(lme_comuna_comparacion %>% 
+            mutate(IdComuna = as.character(IdComuna)) %>%
+            select(IdComuna, Comuna, LME_2023), 
+            by = "IdComuna")
+
+map_lme_2024 <- mapa_comunas %>%
+  filter(codigo_region == 13) %>%
+  rename("IdComuna" = codigo_comuna) %>%
+  mutate(IdComuna = as.character(IdComuna)) %>%
+  left_join(lme_comuna_comparacion %>% 
+            mutate(IdComuna = as.character(IdComuna)) %>%
+            select(IdComuna, Comuna, LME_2024), 
+            by = "IdComuna")
+
+# Paleta de colores
+paleta <- c("#E63946", "#F28482", "#FFB3C1", "#9D4EDD", "#6A4C93")
+
+# Mapa 2023
+figmap_2023 <- ggplot(map_lme_2023) + 
+  geom_sf(aes(fill = LME_2023, geometry = geometry)) +
+  geom_sf_label(aes(label = Comuna, geometry = geometry), 
+                color = "white",
+                fill = NA,
+                label.size = 0,
+                size = 2) +
+  scale_fill_gradientn(
+    colours = rev(paleta), 
+    name = "LME (%)",
+    limits = c(0, 100),
+    breaks = c(0, 20, 40, 60, 80, 100)
+  ) +
+  labs(title = "Lactancia Materna Exclusiva - Año 2023") +
+  theme_minimal() +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+
+# Mapa 2024
+figmap_2024 <- ggplot(map_lme_2024) + 
+  geom_sf(aes(fill = LME_2024, geometry = geometry)) +
+  geom_sf_label(aes(label = Comuna, geometry = geometry), 
+                color = "white",
+                fill = NA,
+                label.size = 0,
+                size = 2) +
+  scale_fill_gradientn(
+    colours = rev(paleta), 
+    name = "LME (%)",
+    limits = c(0, 100),
+    breaks = c(0, 20, 40, 60, 80, 100)
+  ) +
+  labs(title = "Lactancia Materna Exclusiva - Año 2024") +
+  theme_minimal() +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+
+# Combinar mapas
+ggarrange(figmap_2023, figmap_2024,
+          ncol = 2, nrow = 1,
+          common.legend = TRUE,
+          legend = "bottom")
+```
+
+### Tablas Resumen
+
+#### Cambio Porcentual 2023-2024
+
+```{r}
+# Calcular cambios porcentuales para los meses del 1° al 6°
+cambios <- datos_comparacion %>%
+  filter(Mes %in% c("1° mes", "3° mes", "6° mes")) %>%
+  pivot_wider(names_from = Año, values_from = Porcentaje) %>%
+  mutate(
+    `Cambio (pp)` = round(`2024` - `2023`, 2),
+    `Cambio (%)` = round((`2024` - `2023`) / `2023` * 100, 2)
+  ) %>%
+  arrange(Tipo_Alimentacion, Mes)
+
+# Mostrar tabla de cambios con opciones de descarga
+datatable(
+  cambios,
+  caption = "Cambios en Tipos de Lactancia entre 2023 y 2024 (1° a 6° mes)",
+  filter = 'top',
+  extensions = c('Buttons'),
+  options = list(
+    dom = 'Bfrtip',
+    buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+    pageLength = 15,
+    scrollX = TRUE,
+    autoWidth = TRUE
+  )
+) %>%
+  formatStyle(
+    'Cambio (pp)',
+    color = styleInterval(0, c('red', 'green')),
+    fontWeight = 'bold'
+  )
+```
+
+#### Resumen por Comuna
+
+```{r}
+# Crear tabla resumen por comuna
+resumen_comuna <- lme_comuna_comparacion %>%
+  select(Comuna, LME_2023, LME_2024, Cambio) %>%
+  arrange(desc(LME_2024))
+
+datatable(
+  resumen_comuna,
+  caption = "Lactancia Materna Exclusiva por Comuna - Comparación 2023 vs 2024",
+  filter = 'top',
+  extensions = c('Buttons'),
+  options = list(
+    dom = 'Bfrtip',
+    buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+    pageLength = 20,
+    scrollX = TRUE,
+    autoWidth = TRUE
+  )
+) %>%
+  formatStyle(
+    'Cambio',
+    color = styleInterval(0, c('red', 'green')),
+    fontWeight = 'bold'
+  ) %>%
+  formatStyle(
+    c('LME_2023', 'LME_2024'),
+    backgroundColor = styleInterval(c(25, 50, 75), 
+                                   c('#fee5d9', '#fcae91', '#fb6a4a', '#cb181d'))
+  )
+```
+
+## Análisis Ampliado por Comuna - Todos los Tipos de Lactancia
+
+### Comparación de todos los tipos de lactancia por comuna
+
+```{r fig.height=12, fig.width=16}
+# Preparar datos para todos los tipos de lactancia por comuna
+lactancia_comuna_2023 <- datos_2023_comuna_pct %>%
+  filter(CodigoPrestacion != "A0200001") %>%
+  select(IdComuna, Tipo_Alimentacion, TOTAL_Porcentaje) %>%
+  rename(Porcentaje_2023 = TOTAL_Porcentaje)
+
+lactancia_comuna_2024 <- datos_2024_comuna_pct %>%
+  filter(CodigoPrestacion != "A0200001") %>%
+  select(IdComuna, Tipo_Alimentacion, TOTAL_Porcentaje) %>%
+  rename(Porcentaje_2024 = TOTAL_Porcentaje)
+
+# Combinar y agregar nombres de comunas (sin agregar columna Año aquí)
+lactancia_comuna_completo <- lactancia_comuna_2023 %>%
+  full_join(
+    lactancia_comuna_2024, 
+    by = c("IdComuna", "Tipo_Alimentacion")
+  ) %>%
+  mutate(
+    Comuna = nombres_comunas[as.character(IdComuna)],
+    Cambio = Porcentaje_2024 - Porcentaje_2023
+  ) %>%
+  filter(!is.na(Comuna))
+
+# Visualización de todos los tipos por comuna (top 15 comunas por población)
+comunas_principales <- c("Santiago", "Maipú", "La Florida", "Puente Alto", "Las Condes", 
+                        "San Bernardo", "Peñalolén", "Pudahuel", "La Pintana", "Ñuñoa",
+                        "El Bosque", "Recoleta", "Conchalí", "Providencia", "La Granja")
+
+lactancia_filtrada <- lactancia_comuna_completo %>%
+  filter(Comuna %in% comunas_principales) %>%
+  pivot_longer(
+    cols = c(Porcentaje_2023, Porcentaje_2024),
+    names_to = "Año_temp",  # Usar nombre temporal
+    values_to = "Porcentaje"
+  ) %>%
+  mutate(Año = str_extract(Año_temp, "\\d{4}")) %>%
+  select(-Año_temp)  # Eliminar columna temporal
+
+p_todos_tipos <- ggplot(lactancia_filtrada, 
+                        aes(x = Comuna, y = Porcentaje, fill = Tipo_Alimentacion)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = paste0(round(Porcentaje, 0), "%")), 
+            position = position_dodge(width = 0.9),
+            vjust = -0.3, size = 2.5,
+            show.legend = FALSE) +
+  facet_wrap(~ Año, nrow = 2) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(
+    title = "Distribución de Tipos de Lactancia por Comuna Principal",
+    subtitle = "Comparación 2023 vs 2024",
+    x = "Comuna",
+    y = "Porcentaje (%)",
+    fill = "Tipo de Alimentación"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    legend.position = "bottom",
+    legend.text = element_text(size = 8)
+  ) +
+  ylim(0, 70)
+
+print(p_todos_tipos)
+```
+
+### Tabla resumen de todos los tipos de lactancia por comuna
+
+```{r}
+# Crear tabla resumen ampliada
+tabla_resumen_tipos <- lactancia_comuna_completo %>%
+  select(Comuna, Tipo_Alimentacion, Porcentaje_2023, Porcentaje_2024, Cambio) %>%
+  arrange(Comuna, Tipo_Alimentacion)
+
+# Tabla interactiva
+datatable(
+  tabla_resumen_tipos,
+  caption = "Todos los Tipos de Lactancia por Comuna - Comparación 2023 vs 2024",
+  filter = 'top',
+  extensions = c('Buttons'),
+  options = list(
+    dom = 'Bfrtip',
+    buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+    pageLength = 20,
+    scrollX = TRUE,
+    autoWidth = TRUE
+  )
+) %>%
+  formatStyle(
+    'Cambio',
+    color = styleInterval(0, c('red', 'green')),
+    fontWeight = 'bold'
+  ) %>%
+  formatRound(columns = c('Porcentaje_2023', 'Porcentaje_2024', 'Cambio'), digits = 2)
+```
+
+### Análisis por meses de vida y comuna
+
+```{r fig.height=14, fig.width=16}
+# Procesar datos por mes para 2023
+lactancia_mes_2023 <- datos_2023_comuna_pct %>%
+  filter(CodigoPrestacion != "A0200001") %>%
+  select(IdComuna, Tipo_Alimentacion, 
+         `1° mes_Porcentaje`, `3° mes_Porcentaje`, `6° mes_Porcentaje`) %>%
+  pivot_longer(
+    cols = ends_with("_Porcentaje"),
+    names_to = "Mes",
+    values_to = "Porcentaje"
+  ) %>%
+  mutate(
+    Mes = str_remove(Mes, "_Porcentaje"),
+    Año = "2023",
+    Comuna = nombres_comunas[as.character(IdComuna)]
+  ) %>%
+  filter(!is.na(Comuna))
+
+# Procesar datos por mes para 2024
+lactancia_mes_2024 <- datos_2024_comuna_pct %>%
+  filter(CodigoPrestacion != "A0200001") %>%
+  select(IdComuna, Tipo_Alimentacion, 
+         `1° mes_Porcentaje`, `3° mes_Porcentaje`, `6° mes_Porcentaje`) %>%
+  pivot_longer(
+    cols = ends_with("_Porcentaje"),
+    names_to = "Mes",
+    values_to = "Porcentaje"
+  ) %>%
+  mutate(
+    Mes = str_remove(Mes, "_Porcentaje"),
+    Año = "2024",
+    Comuna = nombres_comunas[as.character(IdComuna)]
+  ) %>%
+  filter(!is.na(Comuna))
+
+# Combinar datos
+lactancia_mes_completo <- bind_rows(lactancia_mes_2023, lactancia_mes_2024)
+
+# Visualización solo para LME por mes y comuna principal
+lme_mes_comuna <- lactancia_mes_completo %>%
+  filter(
+    Tipo_Alimentacion == "Lactancia Materna Exclusiva",
+    Comuna %in% comunas_principales
+  )
+
+p_lme_mes <- ggplot(lme_mes_comuna, 
+                    aes(x = Mes, y = Porcentaje, fill = Año)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = paste0(round(Porcentaje, 0), "%")), 
+            position = position_dodge(width = 0.9),
+            vjust = -0.5, size = 2.5,
+            show.legend = FALSE) +
+  facet_wrap(~ Comuna, ncol = 5) +
+  scale_fill_manual(values = c("2023" = "#2166ac", "2024" = "#b2182b")) +
+  labs(
+    title = "Evolución de Lactancia Materna Exclusiva por Mes de Vida y Comuna",
+    subtitle = "Comparación 2023 vs 2024",
+    x = "Mes de Vida",
+    y = "Porcentaje (%)",
+    fill = "Año"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    legend.position = "top"
+  ) +
+  ylim(0, 100)
+
+print(p_lme_mes)
+```
+
+### Tabla detallada por mes y comuna
+
+```{r}
+# Crear tabla pivot para comparación por mes
+tabla_mes_comuna <- lactancia_mes_completo %>%
+  filter(Tipo_Alimentacion == "Lactancia Materna Exclusiva") %>%
+  pivot_wider(
+    names_from = c(Mes, Año),
+    values_from = Porcentaje,
+    names_sep = " "
+  ) %>%
+  select(Comuna, 
+         `1° mes 2023`, `1° mes 2024`,
+         `3° mes 2023`, `3° mes 2024`,
+         `6° mes 2023`, `6° mes 2024`) %>%
+  mutate(
+    `Cambio 1° mes` = `1° mes 2024` - `1° mes 2023`,
+    `Cambio 3° mes` = `3° mes 2024` - `3° mes 2023`,
+    `Cambio 6° mes` = `6° mes 2024` - `6° mes 2023`
+  ) %>%
+  arrange(desc(`1° mes 2024`))
+
+datatable(
+  tabla_mes_comuna,
+  caption = "Lactancia Materna Exclusiva por Mes de Vida y Comuna",
+  filter = 'top',
+  extensions = c('Buttons'),
+  options = list(
+    dom = 'Bfrtip',
+    buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+    pageLength = 20,
+    scrollX = TRUE,
+    autoWidth = TRUE
+  )
+) %>%
+  formatStyle(
+    c('Cambio 1° mes', 'Cambio 3° mes', 'Cambio 6° mes'),
+    color = styleInterval(0, c('red', 'green')),
+    fontWeight = 'bold'
+  ) %>%
+  formatRound(columns = 3:11, digits = 1)
+```
+
+### Análisis de Pueblos Originarios por comuna
+
+```{r fig.height=10, fig.width=14}
+# Datos de Pueblos Originarios por comuna 2023
+pueblos_comuna_2023 <- datos_2023_comuna_pct %>%
+  filter(CodigoPrestacion != "A0200001") %>%
+  select(IdComuna, Tipo_Alimentacion, `Pueblos Originarios_Porcentaje`) %>%
+  rename(Porcentaje_PO_2023 = `Pueblos Originarios_Porcentaje`) %>%
+  mutate(Comuna = nombres_comunas[as.character(IdComuna)]) %>%
+  filter(!is.na(Comuna))
+
+# Datos de Pueblos Originarios por comuna 2024
+pueblos_comuna_2024 <- datos_2024_comuna_pct %>%
+  filter(CodigoPrestacion != "A0200001") %>%
+  select(IdComuna, Tipo_Alimentacion, `Pueblos Originarios_Porcentaje`) %>%
+  rename(Porcentaje_PO_2024 = `Pueblos Originarios_Porcentaje`) %>%
+  mutate(Comuna = nombres_comunas[as.character(IdComuna)]) %>%
+  filter(!is.na(Comuna))
+
+# Combinar datos
+pueblos_comuna <- pueblos_comuna_2023 %>%
+  left_join(pueblos_comuna_2024 %>% select(-Comuna), 
+            by = c("IdComuna", "Tipo_Alimentacion")) %>%
+  mutate(Cambio_PO = Porcentaje_PO_2024 - Porcentaje_PO_2023)
+
+# Visualización para comunas con mayor población de pueblos originarios
+pueblos_top <- pueblos_comuna %>%
+  filter(Tipo_Alimentacion == "Lactancia Materna Exclusiva") %>%
+  group_by(Comuna) %>%
+  summarise(Promedio_PO = mean(c(Porcentaje_PO_2023, Porcentaje_PO_2024), na.rm = TRUE)) %>%
+  arrange(desc(Promedio_PO)) %>%
+  slice_head(n = 15) %>%
+  pull(Comuna)
+
+pueblos_viz <- pueblos_comuna %>%
+  filter(
+    Comuna %in% pueblos_top,
+    Tipo_Alimentacion %in% c("Lactancia Materna Exclusiva", 
+                             "Lactancia Materna / Fórmula Láctea",
+                             "Fórmula Láctea")
+  ) %>%
+  pivot_longer(
+    cols = c(Porcentaje_PO_2023, Porcentaje_PO_2024),
+    names_to = "Año",
+    values_to = "Porcentaje"
+  ) %>%
+  mutate(Año = ifelse(grepl("2023", Año), "2023", "2024"))
+
+p_pueblos <- ggplot(pueblos_viz, 
+                    aes(x = reorder(Comuna, -Porcentaje), 
+                        y = Porcentaje, 
+                        fill = Tipo_Alimentacion)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = paste0(round(Porcentaje, 0), "%")), 
+            position = position_dodge(width = 0.9),
+            vjust = -0.3, size = 2.5,
+            show.legend = FALSE) +
+  facet_wrap(~ Año, nrow = 2) +
+  scale_fill_brewer(palette = "Set1") +
+  labs(
+    title = "Lactancia en Pueblos Originarios por Comuna",
+    subtitle = "Comparación 2023 vs 2024 - Top 15 Comunas",
+    x = "Comuna",
+    y = "Porcentaje (%)",
+    fill = "Tipo de Alimentación"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    legend.position = "bottom"
+  ) +
+  ylim(0, 80)
+
+print(p_pueblos)
+```
+
+### Análisis de población migrante por comuna
+
+```{r fig.height=10, fig.width=14}
+# Datos de Migrantes por comuna 2023
+migrantes_comuna_2023 <- datos_2023_comuna_pct %>%
+  filter(CodigoPrestacion != "A0200001") %>%
+  select(IdComuna, Tipo_Alimentacion, `Migrantes_Porcentaje`) %>%
+  rename(Porcentaje_Mig_2023 = `Migrantes_Porcentaje`) %>%
+  mutate(Comuna = nombres_comunas[as.character(IdComuna)]) %>%
+  filter(!is.na(Comuna))
+
+# Datos de Migrantes por comuna 2024
+migrantes_comuna_2024 <- datos_2024_comuna_pct %>%
+  filter(CodigoPrestacion != "A0200001") %>%
+  select(IdComuna, Tipo_Alimentacion, `Migrantes_Porcentaje`) %>%
+  rename(Porcentaje_Mig_2024 = `Migrantes_Porcentaje`) %>%
+  mutate(Comuna = nombres_comunas[as.character(IdComuna)]) %>%
+  filter(!is.na(Comuna))
+
+# Combinar datos
+migrantes_comuna <- migrantes_comuna_2023 %>%
+  left_join(migrantes_comuna_2024 %>% select(-Comuna), 
+            by = c("IdComuna", "Tipo_Alimentacion")) %>%
+  mutate(Cambio_Mig = Porcentaje_Mig_2024 - Porcentaje_Mig_2023)
+
+# Visualización para comunas con mayor población migrante
+migrantes_top <- migrantes_comuna %>%
+  filter(Tipo_Alimentacion == "Lactancia Materna Exclusiva") %>%
+  group_by(Comuna) %>%
+  summarise(Promedio_Mig = mean(c(Porcentaje_Mig_2023, Porcentaje_Mig_2024), na.rm = TRUE)) %>%
+  arrange(desc(Promedio_Mig)) %>%
+  slice_head(n = 15) %>%
+  pull(Comuna)
+
+migrantes_viz <- migrantes_comuna %>%
+  filter(
+    Comuna %in% migrantes_top,
+    Tipo_Alimentacion %in% c("Lactancia Materna Exclusiva", 
+                             "Lactancia Materna / Fórmula Láctea",
+                             "Fórmula Láctea")
+  ) %>%
+  pivot_longer(
+    cols = c(Porcentaje_Mig_2023, Porcentaje_Mig_2024),
+    names_to = "Año",
+    values_to = "Porcentaje"
+  ) %>%
+  mutate(Año = ifelse(grepl("2023", Año), "2023", "2024"))
+
+p_migrantes <- ggplot(migrantes_viz, 
+                      aes(x = reorder(Comuna, -Porcentaje), 
+                          y = Porcentaje, 
+                          fill = Tipo_Alimentacion)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = paste0(round(Porcentaje, 0), "%")), 
+            position = position_dodge(width = 0.9),
+            vjust = -0.3, size = 2.5,
+            show.legend = FALSE) +
+  facet_wrap(~ Año, nrow = 2) +
+  scale_fill_brewer(palette = "Dark2") +
+  labs(
+    title = "Lactancia en Población Migrante por Comuna",
+    subtitle = "Comparación 2023 vs 2024 - Top 15 Comunas",
+    x = "Comuna",
+    y = "Porcentaje (%)",
+    fill = "Tipo de Alimentación"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    legend.position = "bottom"
+  ) +
+  ylim(0, 80)
+
+print(p_migrantes)
+```
+
+### Tabla comparativa de poblaciones específicas por comuna
+
+```{r}
+# Crear tabla resumen de poblaciones específicas
+tabla_poblaciones <- pueblos_comuna %>%
+  filter(Tipo_Alimentacion == "Lactancia Materna Exclusiva") %>%
+  select(Comuna, Porcentaje_PO_2023, Porcentaje_PO_2024, Cambio_PO) %>%
+  left_join(
+    migrantes_comuna %>%
+      filter(Tipo_Alimentacion == "Lactancia Materna Exclusiva") %>%
+      select(Comuna, Porcentaje_Mig_2023, Porcentaje_Mig_2024, Cambio_Mig),
+    by = "Comuna"
+  ) %>%
+  arrange(desc(Porcentaje_PO_2024))
+
+datatable(
+  tabla_poblaciones,
+  caption = "LME en Poblaciones Específicas por Comuna - Comparación 2023 vs 2024",
+  filter = 'top',
+  extensions = c('Buttons'),
+  options = list(
+    dom = 'Bfrtip',
+    buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+    pageLength = 20,
+    scrollX = TRUE,
+    autoWidth = TRUE
+  )
+) %>%
+  formatStyle(
+    c('Cambio_PO', 'Cambio_Mig'),
+    color = styleInterval(0, c('red', 'green')),
+    fontWeight = 'bold'
+  ) %>%
+  formatRound(columns = 2:7, digits = 1)
+```
+
+### Análisis de brechas entre poblaciones
+
+```{r fig.height=8, fig.width=12}
+# Calcular brechas entre población general y poblaciones específicas
+brechas_2024 <- lactancia_comuna_completo %>%
+  filter(
+    Tipo_Alimentacion == "Lactancia Materna Exclusiva",
+    Comuna %in% comunas_principales
+  ) %>%
+  select(Comuna, Porcentaje_2024) %>%
+  left_join(
+    pueblos_comuna %>%
+      filter(Tipo_Alimentacion == "Lactancia Materna Exclusiva") %>%
+      select(Comuna, Porcentaje_PO_2024),
+    by = "Comuna"
+  ) %>%
+  left_join(
+    migrantes_comuna %>%
+      filter(Tipo_Alimentacion == "Lactancia Materna Exclusiva") %>%
+      select(Comuna, Porcentaje_Mig_2024),
+    by = "Comuna"
+  ) %>%
+  mutate(
+    Brecha_PO = Porcentaje_PO_2024 - Porcentaje_2024,
+    Brecha_Mig = Porcentaje_Mig_2024 - Porcentaje_2024
+  )
+
+# Visualización de brechas
+brechas_viz <- brechas_2024 %>%
+  select(Comuna, Brecha_PO, Brecha_Mig) %>%
+  pivot_longer(
+    cols = starts_with("Brecha"),
+    names_to = "Población",
+    values_to = "Brecha"
+  ) %>%
+  mutate(
+    Población = recode(Población,
+                      "Brecha_PO" = "Pueblos Originarios",
+                      "Brecha_Mig" = "Migrantes")
+  )
+
+p_brechas <- ggplot(brechas_viz, 
+                    aes(x = reorder(Comuna, Brecha), 
+                        y = Brecha, 
+                        fill = Población)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red", alpha = 0.5) +
+  geom_text(aes(label = paste0(round(Brecha, 1), "pp")), 
+            position = position_dodge(width = 0.9),
+            hjust = ifelse(brechas_viz$Brecha > 0, -0.5, 1.5), 
+            size = 3,
+            show.legend = FALSE) +
+  coord_flip() +
+  scale_fill_manual(values = c("Pueblos Originarios" = "#ff7f00", 
+                               "Migrantes" = "#377eb8")) +
+  labs(
+    title = "Brechas en LME: Poblaciones Específicas vs Población General (2024)",
+    subtitle = "Valores positivos indican mejor desempeño que la población general",
+    x = "Comuna",
+    y = "Diferencia en puntos porcentuales",
+    fill = "Población"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    axis.text.y = element_text(size = 9),
+    legend.position = "top"
+  )
+
+print(p_brechas)
+```
+
+### Ranking de comunas por tipo de lactancia
+
+```{r}
+# Crear ranking para 2024
+ranking_2024 <- lactancia_comuna_completo %>%
+  select(Comuna, Tipo_Alimentacion, Porcentaje_2024) %>%
+  group_by(Tipo_Alimentacion) %>%
+  arrange(desc(Porcentaje_2024)) %>%
+  mutate(Ranking = row_number()) %>%
+  ungroup()
+
+# Reorganizar para presentación con nombres válidos
+ranking_final <- data.frame(
+  Posicion = 1:10,
+  LME_Comuna = ranking_2024 %>% 
+    filter(Tipo_Alimentacion == "Lactancia Materna Exclusiva", Ranking <= 10) %>% 
+    pull(Comuna),
+  LME_Porcentaje = ranking_2024 %>% 
+    filter(Tipo_Alimentacion == "Lactancia Materna Exclusiva", Ranking <= 10) %>% 
+    pull(Porcentaje_2024),
+  Formula_Comuna = ranking_2024 %>% 
+    filter(Tipo_Alimentacion == "Fórmula Láctea", Ranking <= 10) %>% 
+    pull(Comuna),
+  Formula_Porcentaje = ranking_2024 %>% 
+    filter(Tipo_Alimentacion == "Fórmula Láctea", Ranking <= 10) %>% 
+    pull(Porcentaje_2024)
+)
+
+# Renombrar columnas para presentación
+names(ranking_final) <- c("Posición", "LME Comuna", "LME %", "Fórmula Comuna", "Fórmula %")
+
+datatable(
+  ranking_final,
+  caption = "Top 10 Comunas por Tipo de Lactancia - Año 2024",
+  filter = 'none',
+  extensions = c('Buttons'),
+  options = list(
+    dom = 'Bfrtip',
+    buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+    pageLength = 10,
+    scrollX = TRUE,
+    autoWidth = TRUE
+  )
+) %>%
+  formatStyle(
+    c('LME %', 'Fórmula %'),
+    backgroundColor = styleInterval(c(30, 50), 
+                                   c('#d4edda', '#b8daff', '#f8d7da'))
+  ) %>%
+  formatRound(columns = c('LME %', 'Fórmula %'), digits = 1)
+```
+
+### 10. Análisis de correlación entre tipos de lactancia
+
+```{r fig.height=8, fig.width=10}
+# Preparar datos para correlación
+correlacion_data <- lactancia_comuna_completo %>%
+  select(Comuna, Tipo_Alimentacion, Porcentaje_2024) %>%
+  pivot_wider(
+    names_from = Tipo_Alimentacion,
+    values_from = Porcentaje_2024
+  )
+
+# Gráfico de dispersión LME vs Fórmula
+p_correlacion <- ggplot(correlacion_data, 
+                        aes(x = `Lactancia Materna Exclusiva`, 
+                            y = `Fórmula Láctea`)) +
+  geom_point(size = 3, alpha = 0.7, color = "#2166ac") +
+  geom_smooth(method = "lm", se = TRUE, color = "red", alpha = 0.3) +
+  geom_text(aes(label = Comuna), 
+            vjust = -0.5, hjust = 0.5, size = 2.5, 
+            check_overlap = TRUE) +
+  labs(
+    title = "Relación entre Lactancia Materna Exclusiva y Fórmula Láctea por Comuna (2024)",
+    subtitle = "Correlación negativa esperada entre ambos tipos",
+    x = "Lactancia Materna Exclusiva (%)",
+    y = "Fórmula Láctea (%)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold")
+  )
+
+print(p_correlacion)
+```
