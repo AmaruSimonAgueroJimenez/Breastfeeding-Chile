@@ -19,4 +19,4 @@ execute:
 # Análisis de Lactancia Materna en Chile 2023-2024
 
 - [Etapa 1: 2023-2024](https://amarusimonaguerojimenez.github.io/Breastfeeding-Chile/stage1.html)
-- [Etapa 2: 2019-2024](https://amarusimonaguerojimenez.github.io/Breastfeeding-Chile/stage1.html)
+- [Etapa 2: 2019-2024](https://amarusimonaguerojimenez.github.io/Breastfeeding-Chile/stage2.html)
