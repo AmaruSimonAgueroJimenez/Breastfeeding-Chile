@@ -1,0 +1,1261 @@
+---
+title: "Análisis de Lactancia Materna en Chile 2023-2024"
+author:
+  - name: "Análisis de Datos de Salud"
+lang: es
+date: "today"
+format:
+  html:
+    embed-resources: false
+    smooth-scroll: true
+    toc: true
+    toc-depth: 4
+    toc-location: right
+    number-sections: true
+    code-fold: true
+    theme: cosmo
+    fig-cap-location: bottom
+execute:
+  warning: false
+  message: false
+  fig-width: 14
+  fig-height: 10
+---
+
+# Análisis de Lactancia Materna en Chile 2023-2024
+
+## Introducción
+
+Este análisis examina los patrones de lactancia materna en la Región Metropolitana de Chile durante los años 2023 y 2024, considerando diferentes tipos de alimentación infantil, meses de vida del lactante y características demográficas. Incluye análisis geoespacial con mapas coropléticos, autocorrelación espacial (Moran's I) y análisis LISA.
+
+## Métodos
+
+### Configuración inicial
+
+```{python}
+#| label: setup
+#| include: false
+
+import sys
+import subprocess
+import importlib
+from subprocess import DEVNULL
+
+def _pip_install(requirement: str):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", requirement],
+                          stdout=DEVNULL, stderr=DEVNULL)
+
+def ensure(requirement: str, import_name: str = None):
+    try:
+        from packaging.requirements import Requirement
+    except Exception:
+        _pip_install("packaging")
+        from packaging.requirements import Requirement
+    req = Requirement(requirement)
+    name = import_name or req.name
+    try:
+        mod = importlib.import_module(name)
+        return mod
+    except Exception:
+        _pip_install(requirement)
+        return importlib.import_module(name)
+
+ensure("numpy")
+ensure("pandas>=2.0.0", "pandas")
+ensure("matplotlib")
+ensure("seaborn")
+ensure("geopandas")
+ensure("libpysal")
+ensure("esda")
+ensure("splot")
+ensure("folium")
+ensure("mapclassify")
+
+import pandas as pd
+import numpy as np
+import os
+import glob
+import warnings
+import matplotlib.pyplot as plt
+import seaborn as sns
+import geopandas as gpd
+from IPython.display import display, HTML
+
+warnings.filterwarnings('ignore')
+plt.rcParams['figure.dpi'] = 100
+plt.rcParams['savefig.dpi'] = 150
+sns.set_style("whitegrid")
+pd.set_option('display.max_columns', None)
+pd.set_option('display.precision', 2)
+
+# Rutas - .qmd está en docs/, data/ está al mismo nivel
+base_path = os.path.dirname(os.getcwd())
+data_path = os.path.join(base_path, 'data')
+if not os.path.exists(data_path):
+    data_path = os.path.join(os.getcwd(), 'data')
+if not os.path.exists(data_path):
+    data_path = '../data'
+
+output_path = os.path.join(base_path, 'output_files')
+figures_path = os.path.join(output_path, 'figures')
+os.makedirs(output_path, exist_ok=True)
+os.makedirs(figures_path, exist_ok=True)
+```
+
+```{python}
+#| label: constants
+#| include: false
+
+CODIGOS_LACTANCIA = {
+    "A0200002": "Lactancia Materna Exclusiva",
+    "03500359": "Lactancia Materna / Fórmula Láctea",
+    "03500360": "Fórmula Láctea",
+    "A0200003": "Lactancia Materna + Alimentación Complementaria",
+    "03600140": "LM / Fórmula / Alimentación Complementaria",
+    "03600150": "Fórmula + Alimentación Complementaria",
+    "A0200001": "Total Niños/as Controlados"
+}
+
+CODIGO_DENOMINADOR = "A0200001"
+
+NOMBRES_COMUNAS = {
+    "13101": "Santiago", "13102": "Cerrillos", "13103": "Cerro Navia",
+    "13104": "Conchalí", "13105": "El Bosque", "13106": "Estación Central",
+    "13107": "Huechuraba", "13108": "Independencia", "13109": "La Cisterna",
+    "13110": "La Florida", "13111": "La Granja", "13112": "La Pintana",
+    "13113": "La Reina", "13114": "Las Condes", "13115": "Lo Barnechea",
+    "13116": "Lo Espejo", "13117": "Lo Prado", "13118": "Macul",
+    "13119": "Maipú", "13120": "Ñuñoa", "13121": "Pedro Aguirre Cerda",
+    "13122": "Peñalolén", "13123": "Providencia", "13124": "Pudahuel",
+    "13125": "Quilicura", "13126": "Quinta Normal", "13127": "Recoleta",
+    "13128": "Renca", "13129": "San Joaquín", "13130": "San Miguel",
+    "13131": "San Ramón", "13132": "Vitacura", "13201": "Puente Alto",
+    "13202": "Pirque", "13203": "San José de Maipo", "13301": "Colina",
+    "13302": "Lampa", "13303": "Tiltil", "13401": "San Bernardo",
+    "13402": "Buin", "13403": "Calera de Tango", "13404": "Paine",
+    "13501": "Melipilla", "13502": "Alhué", "13503": "Curacaví",
+    "13504": "María Pinto", "13505": "San Pedro", "13601": "Talagante",
+    "13602": "El Monte", "13603": "Isla de Maipo", "13604": "Padre Hurtado",
+    "13605": "Peñaflor"
+}
+
+COLORES_AÑOS = {"2023": "#2166ac", "2024": "#b2182b"}
+```
+
+### Funciones auxiliares
+
+```{python}
+#| label: functions
+#| include: false
+
+def cargar_datos_lactancia(data_path, año):
+    pattern = f"SerieA_*{año}*"
+    files = glob.glob(os.path.join(data_path, pattern + ".txt")) + \
+            glob.glob(os.path.join(data_path, pattern + ".csv"))
+    if not files:
+        return None
+    for encoding in ['latin-1', 'utf-8', 'cp1252']:
+        try:
+            df = pd.read_csv(files[0], sep=';', encoding=encoding, dtype=str, low_memory=False)
+            break
+        except:
+            continue
+    else:
+        return None
+    df['IdComuna'] = df['IdComuna'].astype(str)
+    df = df[df['IdComuna'].str.startswith('13')]
+    df = df[df['CodigoPrestacion'].isin(CODIGOS_LACTANCIA.keys())]
+    return df
+
+def procesar_datos_año(df, año):
+    if df is None or len(df) == 0:
+        return None
+    if año == "2023":
+        columnas_interes = ["Col01", "Col03", "Col04", "Col05", "Col08", "Col09"]
+        nombres_cols = ["TOTAL", "1° mes", "3° mes", "6° mes", "Pueblos Originarios", "Migrantes"]
+    else:
+        columnas_interes = ["Col01", "Col04", "Col05", "Col06", "Col09", "Col10"]
+        nombres_cols = ["TOTAL", "1° mes", "3° mes", "6° mes", "Pueblos Originarios", "Migrantes"]
+    columnas_existentes = [c for c in columnas_interes if c in df.columns]
+    nombres_existentes = nombres_cols[:len(columnas_existentes)]
+    for col in columnas_existentes:
+        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+    df_sum = df.groupby('CodigoPrestacion')[columnas_existentes].sum().reset_index()
+    rename_dict = dict(zip(columnas_existentes, nombres_existentes))
+    df_sum.rename(columns=rename_dict, inplace=True)
+    df_sum['Tipo_Alimentacion'] = df_sum['CodigoPrestacion'].map(CODIGOS_LACTANCIA)
+    return df_sum
+
+def procesar_datos_comuna(df, año):
+    if df is None or len(df) == 0:
+        return None
+    if año == "2023":
+        columnas_interes = ["Col01", "Col03", "Col04", "Col05", "Col08", "Col09"]
+        nombres_cols = ["TOTAL", "1° mes", "3° mes", "6° mes", "Pueblos Originarios", "Migrantes"]
+    else:
+        columnas_interes = ["Col01", "Col04", "Col05", "Col06", "Col09", "Col10"]
+        nombres_cols = ["TOTAL", "1° mes", "3° mes", "6° mes", "Pueblos Originarios", "Migrantes"]
+    columnas_existentes = [c for c in columnas_interes if c in df.columns]
+    nombres_existentes = nombres_cols[:len(columnas_existentes)]
+    for col in columnas_existentes:
+        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+    df_sum = df.groupby(['CodigoPrestacion', 'IdComuna'])[columnas_existentes].sum().reset_index()
+    rename_dict = dict(zip(columnas_existentes, nombres_existentes))
+    df_sum.rename(columns=rename_dict, inplace=True)
+    df_sum['Tipo_Alimentacion'] = df_sum['CodigoPrestacion'].map(CODIGOS_LACTANCIA)
+    return df_sum
+
+def calcular_porcentajes(df):
+    if df is None:
+        return None
+    denominador = df[df['CodigoPrestacion'] == CODIGO_DENOMINADOR].copy()
+    cols_numericas = [c for c in df.columns if c not in ['CodigoPrestacion', 'Tipo_Alimentacion', 'IdComuna']]
+    df_pct = df.copy()
+    for col in cols_numericas:
+        if col in denominador.columns and len(denominador) > 0:
+            denom_val = denominador[col].values[0]
+            df_pct[f'{col}_Porcentaje'] = (df_pct[col] / denom_val * 100).round(2) if denom_val > 0 else 0
+    return df_pct
+
+def calcular_porcentajes_comuna(df):
+    if df is None:
+        return None
+    cols_numericas = [c for c in df.columns if c not in ['CodigoPrestacion', 'Tipo_Alimentacion', 'IdComuna']]
+    df_pct = df.copy()
+    for col in cols_numericas:
+        df_pct[f'{col}_Porcentaje'] = 0.0
+    comunas = df['IdComuna'].unique()
+    for comuna in comunas:
+        denom = df[(df['CodigoPrestacion'] == CODIGO_DENOMINADOR) & (df['IdComuna'] == comuna)]
+        if len(denom) > 0:
+            for col in cols_numericas:
+                denom_val = denom[col].values[0]
+                if denom_val > 0:
+                    mask = df_pct['IdComuna'] == comuna
+                    df_pct.loc[mask, f'{col}_Porcentaje'] = (df_pct.loc[mask, col] / denom_val * 100).round(2)
+    return df_pct
+
+def save_figure(fig, filename):
+    filepath = os.path.join(figures_path, filename)
+    fig.savefig(filepath, dpi=150, bbox_inches='tight', facecolor='white')
+
+def normalize_comuna_spatial(x):
+    if pd.isna(x):
+        return None
+    s = str(x).upper().strip()
+    s = s.encode('latin-1', errors='ignore').decode('latin-1', errors='ignore')
+    replacements = {
+        'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U', 'Ñ': 'N',
+        'Ã\x81': 'A', 'Ã\x89': 'E', 'Ã\x8d': 'I', 'Ã\x93': 'O', 'Ã\x9a': 'U',
+        'Ã\x91': 'N', 'Ã±': 'N'
+    }
+    for old, new in replacements.items():
+        s = s.replace(old, new)
+    s = ''.join(c for c in s if c.isalnum() or c == ' ')
+    return s.strip()
+```
+
+### Carga y procesamiento de datos
+
+```{python}
+#| label: load-data
+
+datos_2023_raw = cargar_datos_lactancia(data_path, '2023')
+datos_2024_raw = cargar_datos_lactancia(data_path, '2024')
+datos_2023 = procesar_datos_año(datos_2023_raw.copy() if datos_2023_raw is not None else None, "2023")
+datos_2024 = procesar_datos_año(datos_2024_raw.copy() if datos_2024_raw is not None else None, "2024")
+datos_2023_comuna = procesar_datos_comuna(datos_2023_raw.copy() if datos_2023_raw is not None else None, "2023")
+datos_2024_comuna = procesar_datos_comuna(datos_2024_raw.copy() if datos_2024_raw is not None else None, "2024")
+datos_2023_pct = calcular_porcentajes(datos_2023) if datos_2023 is not None else None
+datos_2024_pct = calcular_porcentajes(datos_2024) if datos_2024 is not None else None
+datos_2023_comuna_pct = calcular_porcentajes_comuna(datos_2023_comuna) if datos_2023_comuna is not None else None
+datos_2024_comuna_pct = calcular_porcentajes_comuna(datos_2024_comuna) if datos_2024_comuna is not None else None
+```
+
+## Resultados
+
+### Análisis de Totales Generales
+
+```{python}
+#| label: prepare-totales
+
+tabla_totales = None
+if datos_2023_pct is not None and datos_2024_pct is not None:
+    totales_2023 = datos_2023_pct[datos_2023_pct['CodigoPrestacion'] != CODIGO_DENOMINADOR][
+        ['Tipo_Alimentacion', 'TOTAL', 'TOTAL_Porcentaje']].copy()
+    totales_2023.columns = ['Tipo_Alimentacion', 'Total_2023', '%_2023']
+    totales_2024 = datos_2024_pct[datos_2024_pct['CodigoPrestacion'] != CODIGO_DENOMINADOR][
+        ['Tipo_Alimentacion', 'TOTAL', 'TOTAL_Porcentaje']].copy()
+    totales_2024.columns = ['Tipo_Alimentacion', 'Total_2024', '%_2024']
+    tabla_totales = totales_2023.merge(totales_2024, on='Tipo_Alimentacion')
+    tabla_totales['Cambio_Absoluto'] = tabla_totales['Total_2024'] - tabla_totales['Total_2023']
+    tabla_totales['Cambio_%'] = (tabla_totales['%_2024'] - tabla_totales['%_2023']).round(2)
+    tabla_totales = tabla_totales.sort_values('%_2024', ascending=False)
+```
+
+```{python}
+#| label: tbl-totales
+#| tbl-cap: "Comparación de Totales por Tipo de Alimentación 2023 vs 2024"
+#| tbl-cap-location: bottom
+
+tabla_totales.style.format({
+    'Total_2023': '{:,.0f}', 'Total_2024': '{:,.0f}',
+    '%_2023': '{:.1f}', '%_2024': '{:.1f}',
+    'Cambio_Absoluto': '{:+,.0f}', 'Cambio_%': '{:+.2f}'
+}).background_gradient(cmap='RdYlGn', subset=['Cambio_%']).hide(axis="index") if tabla_totales is not None else None
+```
+
+```{python}
+#| label: fig-totales
+#| fig-cap: "Distribución Total de Tipos de Alimentación Infantil"
+
+if datos_2023_pct is not None and datos_2024_pct is not None:
+    datos_graf = tabla_totales.melt(id_vars=['Tipo_Alimentacion'], value_vars=['%_2023', '%_2024'],
+                                     var_name='Año', value_name='Porcentaje')
+    datos_graf['Año'] = datos_graf['Año'].str.extract(r'(\d{4})')
+    fig, ax = plt.subplots(figsize=(14, 6))
+    tipos = datos_graf['Tipo_Alimentacion'].unique()
+    x = np.arange(len(tipos))
+    width = 0.35
+    for i, año in enumerate(['2023', '2024']):
+        valores = datos_graf[datos_graf['Año'] == año].set_index('Tipo_Alimentacion').loc[tipos, 'Porcentaje']
+        bars = ax.bar(x + i*width - width/2, valores, width, label=año, color=COLORES_AÑOS[año])
+        ax.bar_label(bars, fmt='%.1f%%', padding=3, fontsize=9)
+    ax.set_xlabel('Tipo de Alimentación')
+    ax.set_ylabel('Porcentaje (%)')
+    ax.set_title('Distribución Total de Tipos de Alimentación Infantil\nComparación 2023 vs 2024', fontweight='bold')
+    ax.set_xticks(x)
+    ax.set_xticklabels([t[:30] + '...' if len(t) > 30 else t for t in tipos], rotation=45, ha='right')
+    ax.legend(title='Año')
+    ax.grid(True, alpha=0.3, axis='y')
+    plt.tight_layout()
+    save_figure(fig, 'totales_comparacion.png')
+    plt.show()
+```
+
+### Evolución de Lactancia Materna Exclusiva
+
+```{python}
+#| label: prepare-evolucion
+
+lme_evolucion = None
+if datos_2023_pct is not None and datos_2024_pct is not None:
+    meses = ['1° mes', '3° mes', '6° mes']
+    lme_2023 = datos_2023_pct[datos_2023_pct['Tipo_Alimentacion'] == 'Lactancia Materna Exclusiva']
+    lme_2024 = datos_2024_pct[datos_2024_pct['Tipo_Alimentacion'] == 'Lactancia Materna Exclusiva']
+    
+    evol_data = []
+    for m in meses:
+        col_pct = f'{m}_Porcentaje'
+        col_abs = m
+        val_2023_pct = lme_2023[col_pct].values[0] if col_pct in lme_2023.columns else 0
+        val_2024_pct = lme_2024[col_pct].values[0] if col_pct in lme_2024.columns else 0
+        val_2023_abs = lme_2023[col_abs].values[0] if col_abs in lme_2023.columns else 0
+        val_2024_abs = lme_2024[col_abs].values[0] if col_abs in lme_2024.columns else 0
+        evol_data.append({
+            'Mes': m, 'N_2023': val_2023_abs, '%_2023': val_2023_pct,
+            'N_2024': val_2024_abs, '%_2024': val_2024_pct,
+            'Cambio_N': val_2024_abs - val_2023_abs,
+            'Cambio_%': val_2024_pct - val_2023_pct
+        })
+    lme_evolucion = pd.DataFrame(evol_data)
+```
+
+```{python}
+#| label: tbl-evolucion-meses
+#| tbl-cap: "Evolución de LME por Mes de Vida"
+#| tbl-cap-location: bottom
+
+lme_evolucion.style.format({
+    'N_2023': '{:,.0f}', 'N_2024': '{:,.0f}',
+    '%_2023': '{:.1f}', '%_2024': '{:.1f}',
+    'Cambio_N': '{:+,.0f}', 'Cambio_%': '{:+.2f}'
+}).background_gradient(cmap='RdYlGn', subset=['Cambio_%']).hide(axis="index") if lme_evolucion is not None else None
+```
+
+```{python}
+#| label: fig-lme-evolucion
+#| fig-cap: "Evolución de LME en los Primeros 6 Meses"
+
+if lme_evolucion is not None:
+    meses = lme_evolucion['Mes'].tolist()
+    vals_2023 = lme_evolucion['%_2023'].tolist()
+    vals_2024 = lme_evolucion['%_2024'].tolist()
+    
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(meses, vals_2023, 'o-', linewidth=2, markersize=10, label='2023', color=COLORES_AÑOS['2023'])
+    ax.plot(meses, vals_2024, 's-', linewidth=2, markersize=10, label='2024', color=COLORES_AÑOS['2024'])
+    for i, (v23, v24) in enumerate(zip(vals_2023, vals_2024)):
+        ax.annotate(f'{v23:.1f}%', (i, v23), textcoords="offset points", xytext=(0,10), ha='center')
+        ax.annotate(f'{v24:.1f}%', (i, v24), textcoords="offset points", xytext=(0,-15), ha='center')
+    ax.set_xlabel('Mes de Vida')
+    ax.set_ylabel('Porcentaje (%)')
+    ax.set_title('Evolución de Lactancia Materna Exclusiva\nen los Primeros 6 Meses', fontweight='bold')
+    ax.legend(title='Año')
+    ax.grid(True, alpha=0.3)
+    ax.set_ylim(0, max(max(vals_2023), max(vals_2024)) * 1.2)
+    plt.tight_layout()
+    save_figure(fig, 'lme_evolucion.png')
+    plt.show()
+```
+
+## Análisis por Comuna
+
+### Preparación de datos por comuna
+
+```{python}
+#| label: prepare-comuna-data
+
+lme_comuna = None
+if datos_2023_comuna_pct is not None and datos_2024_comuna_pct is not None:
+    lme_comuna_2023 = datos_2023_comuna_pct[
+        datos_2023_comuna_pct['Tipo_Alimentacion'] == 'Lactancia Materna Exclusiva'
+    ][['IdComuna', 'TOTAL_Porcentaje']].copy()
+    lme_comuna_2023.columns = ['IdComuna', 'LME_2023']
+    lme_comuna_2024 = datos_2024_comuna_pct[
+        datos_2024_comuna_pct['Tipo_Alimentacion'] == 'Lactancia Materna Exclusiva'
+    ][['IdComuna', 'TOTAL_Porcentaje']].copy()
+    lme_comuna_2024.columns = ['IdComuna', 'LME_2024']
+    lme_comuna = lme_comuna_2023.merge(lme_comuna_2024, on='IdComuna', how='outer')
+    lme_comuna['Comuna'] = lme_comuna['IdComuna'].map(NOMBRES_COMUNAS)
+    lme_comuna['Cambio'] = lme_comuna['LME_2024'] - lme_comuna['LME_2023']
+    lme_comuna = lme_comuna.dropna(subset=['Comuna'])
+    lme_comuna.to_csv(os.path.join(output_path, 'lme_comuna_comparacion.csv'), index=False)
+```
+
+### Estadísticas Descriptivas por Año
+
+```{python}
+#| label: tbl-estadisticas-descriptivas
+#| tbl-cap: "Estadísticas Descriptivas de LME por Comuna"
+#| tbl-cap-location: bottom
+
+if lme_comuna is not None and len(lme_comuna) > 0:
+    stats_data = {
+        'Estadística': ['N comunas', 'Media', 'Desv. Estándar', 'Mínimo', 'Q1 (25%)', 
+                        'Mediana (50%)', 'Q3 (75%)', 'Máximo', 'Rango'],
+        'LME 2023 (%)': [
+            len(lme_comuna), f"{lme_comuna['LME_2023'].mean():.1f}",
+            f"{lme_comuna['LME_2023'].std():.1f}", f"{lme_comuna['LME_2023'].min():.1f}",
+            f"{lme_comuna['LME_2023'].quantile(0.25):.1f}", f"{lme_comuna['LME_2023'].median():.1f}",
+            f"{lme_comuna['LME_2023'].quantile(0.75):.1f}", f"{lme_comuna['LME_2023'].max():.1f}",
+            f"{lme_comuna['LME_2023'].max() - lme_comuna['LME_2023'].min():.1f}"
+        ],
+        'LME 2024 (%)': [
+            len(lme_comuna), f"{lme_comuna['LME_2024'].mean():.1f}",
+            f"{lme_comuna['LME_2024'].std():.1f}", f"{lme_comuna['LME_2024'].min():.1f}",
+            f"{lme_comuna['LME_2024'].quantile(0.25):.1f}", f"{lme_comuna['LME_2024'].median():.1f}",
+            f"{lme_comuna['LME_2024'].quantile(0.75):.1f}", f"{lme_comuna['LME_2024'].max():.1f}",
+            f"{lme_comuna['LME_2024'].max() - lme_comuna['LME_2024'].min():.1f}"
+        ],
+        'Cambio (pp)': [
+            len(lme_comuna), f"{lme_comuna['Cambio'].mean():+.2f}",
+            f"{lme_comuna['Cambio'].std():.2f}", f"{lme_comuna['Cambio'].min():+.2f}",
+            f"{lme_comuna['Cambio'].quantile(0.25):+.2f}", f"{lme_comuna['Cambio'].median():+.2f}",
+            f"{lme_comuna['Cambio'].quantile(0.75):+.2f}", f"{lme_comuna['Cambio'].max():+.2f}",
+            f"{lme_comuna['Cambio'].max() - lme_comuna['Cambio'].min():.2f}"
+        ]
+    }
+    stats_df = pd.DataFrame(stats_data)
+
+stats_df.style.hide(axis="index") if 'stats_df' in dir() else None
+```
+
+### Top 10 Comunas con Mayor y Menor LME
+
+```{python}
+#| label: prepare-top-bottom
+
+combined = None
+if lme_comuna is not None and len(lme_comuna) > 0:
+    top_10 = lme_comuna.nlargest(10, 'LME_2024')[['Comuna', 'LME_2023', 'LME_2024', 'Cambio']].copy()
+    top_10['Ranking'] = range(1, 11)
+    top_10 = top_10[['Ranking', 'Comuna', 'LME_2023', 'LME_2024', 'Cambio']]
+    
+    bottom_10 = lme_comuna.nsmallest(10, 'LME_2024')[['Comuna', 'LME_2023', 'LME_2024', 'Cambio']].copy()
+    bottom_10['Ranking'] = range(len(lme_comuna), len(lme_comuna)-10, -1)
+    bottom_10 = bottom_10[['Ranking', 'Comuna', 'LME_2023', 'LME_2024', 'Cambio']]
+    
+    combined = pd.concat([
+        top_10.assign(Grupo='Top 10'),
+        bottom_10.assign(Grupo='Bottom 10')
+    ])
+```
+
+```{python}
+#| label: tbl-top-bottom-comunas
+#| tbl-cap: "Comunas con Mayor y Menor LME en 2024"
+#| tbl-cap-location: bottom
+
+combined.style.format({
+    'LME_2023': '{:.1f}', 'LME_2024': '{:.1f}', 'Cambio': '{:+.2f}'
+}).hide(axis="index") if combined is not None else None
+```
+
+### Lactancia Materna Exclusiva por Comuna
+
+```{python}
+#| label: tbl-lme-comuna
+#| tbl-cap: "Lactancia Materna Exclusiva por Comuna"
+#| tbl-cap-location: bottom
+
+tabla_comuna = None
+if lme_comuna is not None and len(lme_comuna) > 0:
+    tabla_comuna = lme_comuna[['Comuna', 'LME_2023', 'LME_2024', 'Cambio']].sort_values('LME_2024', ascending=False)
+
+tabla_comuna.style.format({
+    'LME_2023': '{:.1f}', 'LME_2024': '{:.1f}', 'Cambio': '{:+.2f}'
+}).background_gradient(cmap='RdYlGn', subset=['Cambio']).hide(axis="index") if tabla_comuna is not None else None
+```
+
+```{python}
+#| label: fig-lme-comuna
+#| fig-cap: "LME por Comuna - Comparación 2023 vs 2024"
+
+if lme_comuna is not None and len(lme_comuna) > 0:
+    fig, ax = plt.subplots(figsize=(14, 12))
+    lme_sorted = lme_comuna.sort_values('LME_2024', ascending=True)
+    y = np.arange(len(lme_sorted))
+    height = 0.35
+    ax.barh(y - height/2, lme_sorted['LME_2023'], height, label='2023', color=COLORES_AÑOS['2023'])
+    ax.barh(y + height/2, lme_sorted['LME_2024'], height, label='2024', color=COLORES_AÑOS['2024'])
+    ax.set_xlabel('Porcentaje (%)')
+    ax.set_ylabel('Comuna')
+    ax.set_title('Lactancia Materna Exclusiva por Comuna\nComparación 2023 vs 2024', fontweight='bold')
+    ax.set_yticks(y)
+    ax.set_yticklabels(lme_sorted['Comuna'])
+    ax.legend(title='Año')
+    ax.grid(True, alpha=0.3, axis='x')
+    plt.tight_layout()
+    save_figure(fig, 'lme_comuna_barras.png')
+    plt.show()
+```
+
+## Análisis Geoespacial
+
+### Carga de datos espaciales
+
+```{python}
+#| label: load-spatial
+
+from libpysal.weights import Queen
+from esda.moran import Moran, Moran_Local
+from splot.esda import moran_scatterplot
+from matplotlib.patches import Patch
+import folium
+
+shp_candidates = [
+    os.path.join(data_path, 'comunas.shp'),
+    os.path.join(base_path, 'data', 'comunas.shp'),
+    '../data/comunas.shp',
+    os.path.join(os.getcwd(), 'comunas.shp'),
+    os.path.join(os.getcwd(), 'data', 'comunas.shp'),
+]
+
+shp_path = None
+for candidate in shp_candidates:
+    if os.path.exists(candidate):
+        shp_path = candidate
+        break
+
+has_spatial_data = False
+gdf_lme = None
+pesos = None
+```
+
+```{python}
+#| label: load-shapefile
+
+if shp_path:
+    gdf = gpd.read_file(shp_path)
+    gdf["codregion"] = pd.to_numeric(gdf["codregion"], errors="coerce")
+    gdf = gdf[gdf["codregion"] == 13].copy()
+    COMUNA_COL = "Comuna"
+    gdf["comuna_norm"] = gdf[COMUNA_COL].apply(normalize_comuna_spatial)
+    
+    if lme_comuna is not None:
+        lme_comuna_copy = lme_comuna.copy()
+        lme_comuna_copy['comuna_norm'] = lme_comuna_copy['Comuna'].apply(normalize_comuna_spatial)
+        gdf_lme = gdf.merge(
+            lme_comuna_copy[['comuna_norm', 'LME_2023', 'LME_2024', 'Cambio', 'Comuna']],
+            on='comuna_norm', how='left', suffixes=('_shp', '')
+        )
+        gdf_lme = gdf_lme.dropna(subset=['LME_2023', 'LME_2024'])
+        has_spatial_data = len(gdf_lme) > 0
+        if has_spatial_data and len(gdf_lme) > 3:
+            pesos = Queen.from_dataframe(gdf_lme)
+```
+
+### Mapas Coropléticos de LME por Comuna
+
+```{python}
+#| label: fig-choropleth-lme
+#| fig-cap: "Mapas Coropléticos - LME por Comuna (2023 vs 2024)"
+
+if has_spatial_data:
+    fig, axes = plt.subplots(1, 2, figsize=(18, 10))
+    ax1 = axes[0]
+    gdf_lme.plot(column='LME_2023', cmap='RdYlGn', linewidth=0.5, ax=ax1, edgecolor='0.5',
+                 legend=True, legend_kwds={'label': 'LME (%)', 'shrink': 0.6}, vmin=0, vmax=100)
+    ax1.set_title('Lactancia Materna Exclusiva - Año 2023', fontweight='bold', fontsize=14)
+    ax1.set_axis_off()
+    for idx, row in gdf_lme.iterrows():
+        centroid = row.geometry.centroid
+        comuna_name = row.get('Comuna', row.get('Comuna_shp', ''))
+        if pd.notna(comuna_name) and comuna_name:
+            ax1.annotate(str(comuna_name)[:10], xy=(centroid.x, centroid.y), fontsize=5, ha='center',
+                        bbox=dict(boxstyle='round,pad=0.2', facecolor='white', alpha=0.6))
+    ax2 = axes[1]
+    gdf_lme.plot(column='LME_2024', cmap='RdYlGn', linewidth=0.5, ax=ax2, edgecolor='0.5',
+                 legend=True, legend_kwds={'label': 'LME (%)', 'shrink': 0.6}, vmin=0, vmax=100)
+    ax2.set_title('Lactancia Materna Exclusiva - Año 2024', fontweight='bold', fontsize=14)
+    ax2.set_axis_off()
+    for idx, row in gdf_lme.iterrows():
+        centroid = row.geometry.centroid
+        comuna_name = row.get('Comuna', row.get('Comuna_shp', ''))
+        if pd.notna(comuna_name) and comuna_name:
+            ax2.annotate(str(comuna_name)[:10], xy=(centroid.x, centroid.y), fontsize=5, ha='center',
+                        bbox=dict(boxstyle='round,pad=0.2', facecolor='white', alpha=0.6))
+    plt.suptitle('Lactancia Materna Exclusiva - Región Metropolitana', fontsize=16, fontweight='bold', y=1.02)
+    plt.tight_layout()
+    save_figure(fig, 'choropleth_lme_2023_2024.png')
+    plt.show()
+```
+
+### Mapa de Cambio Interanual
+
+```{python}
+#| label: fig-change-map
+#| fig-cap: "Mapa de Cambio en LME (2024 - 2023)"
+
+if has_spatial_data:
+    fig, ax = plt.subplots(figsize=(12, 10))
+    max_abs = max(abs(gdf_lme['Cambio'].min()), abs(gdf_lme['Cambio'].max()))
+    gdf_lme.plot(column='Cambio', cmap='RdBu', linewidth=0.5, ax=ax, edgecolor='0.5',
+                 legend=True, legend_kwds={'label': 'Cambio (pp)', 'shrink': 0.6},
+                 vmin=-max_abs, vmax=max_abs)
+    ax.set_title('Cambio en LME (2024 - 2023)\nRegión Metropolitana', fontweight='bold', fontsize=14)
+    ax.set_axis_off()
+    for idx, row in gdf_lme.iterrows():
+        centroid = row.geometry.centroid
+        cambio = row['Cambio']
+        color = 'darkgreen' if cambio > 0 else 'darkred'
+        ax.annotate(f'{cambio:+.1f}', xy=(centroid.x, centroid.y), fontsize=7, ha='center',
+                   color=color, fontweight='bold',
+                   bbox=dict(boxstyle='round,pad=0.2', facecolor='white', alpha=0.7))
+    plt.tight_layout()
+    save_figure(fig, 'mapa_cambio_lme.png')
+    plt.show()
+```
+
+### Autocorrelación Espacial - Moran's I
+
+```{python}
+#| label: moran-analysis
+
+moran_2023 = None
+moran_2024 = None
+moran_cambio = None
+
+if has_spatial_data and pesos is not None:
+    if gdf_lme['LME_2023'].var() > 0:
+        moran_2023 = Moran(gdf_lme['LME_2023'], pesos)
+    if gdf_lme['LME_2024'].var() > 0:
+        moran_2024 = Moran(gdf_lme['LME_2024'], pesos)
+    if gdf_lme['Cambio'].var() > 0:
+        moran_cambio = Moran(gdf_lme['Cambio'], pesos)
+```
+
+```{python}
+#| label: tbl-moran
+#| tbl-cap: "Test de Autocorrelación Espacial - Moran's I Global"
+#| tbl-cap-location: bottom
+
+moran_df = None
+if moran_2023 is not None or moran_2024 is not None or moran_cambio is not None:
+    moran_results = []
+    if moran_2023:
+        moran_results.append({
+            'Variable': 'LME 2023', "Moran's I": round(moran_2023.I, 4),
+            'E[I]': round(moran_2023.EI, 4), 'Z-score': round(moran_2023.z_norm, 4),
+            'P-value': round(moran_2023.p_norm, 4),
+            'Interpretación': 'Agrupado' if moran_2023.I > 0 and moran_2023.p_norm < 0.05 else 
+                             ('Disperso' if moran_2023.I < 0 and moran_2023.p_norm < 0.05 else 'Aleatorio')
+        })
+    if moran_2024:
+        moran_results.append({
+            'Variable': 'LME 2024', "Moran's I": round(moran_2024.I, 4),
+            'E[I]': round(moran_2024.EI, 4), 'Z-score': round(moran_2024.z_norm, 4),
+            'P-value': round(moran_2024.p_norm, 4),
+            'Interpretación': 'Agrupado' if moran_2024.I > 0 and moran_2024.p_norm < 0.05 else 
+                             ('Disperso' if moran_2024.I < 0 and moran_2024.p_norm < 0.05 else 'Aleatorio')
+        })
+    if moran_cambio:
+        moran_results.append({
+            'Variable': 'Cambio', "Moran's I": round(moran_cambio.I, 4),
+            'E[I]': round(moran_cambio.EI, 4), 'Z-score': round(moran_cambio.z_norm, 4),
+            'P-value': round(moran_cambio.p_norm, 4),
+            'Interpretación': 'Agrupado' if moran_cambio.I > 0 and moran_cambio.p_norm < 0.05 else 
+                             ('Disperso' if moran_cambio.I < 0 and moran_cambio.p_norm < 0.05 else 'Aleatorio')
+        })
+    moran_df = pd.DataFrame(moran_results)
+
+moran_df.style.format({"Moran's I": '{:.4f}', 'E[I]': '{:.4f}', 
+                       'Z-score': '{:.4f}', 'P-value': '{:.4f}'}).hide(axis="index") if moran_df is not None else None
+```
+
+```{python}
+#| label: fig-moran-scatter
+#| fig-cap: "Diagrama de Dispersión de Moran"
+
+if moran_2023 is not None or moran_2024 is not None or moran_cambio is not None:
+    fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+    if moran_2023:
+        moran_scatterplot(moran_2023, zstandard=True, ax=axes[0])
+        axes[0].set_title(f"LME 2023\nMoran's I = {moran_2023.I:.4f} (p = {moran_2023.p_norm:.4f})", fontweight='bold')
+    else:
+        axes[0].text(0.5, 0.5, 'Sin datos', ha='center', va='center', transform=axes[0].transAxes)
+    if moran_2024:
+        moran_scatterplot(moran_2024, zstandard=True, ax=axes[1])
+        axes[1].set_title(f"LME 2024\nMoran's I = {moran_2024.I:.4f} (p = {moran_2024.p_norm:.4f})", fontweight='bold')
+    else:
+        axes[1].text(0.5, 0.5, 'Sin datos', ha='center', va='center', transform=axes[1].transAxes)
+    if moran_cambio:
+        moran_scatterplot(moran_cambio, zstandard=True, ax=axes[2])
+        axes[2].set_title(f"Cambio\nMoran's I = {moran_cambio.I:.4f} (p = {moran_cambio.p_norm:.4f})", fontweight='bold')
+    else:
+        axes[2].text(0.5, 0.5, 'Sin datos', ha='center', va='center', transform=axes[2].transAxes)
+    plt.suptitle("Autocorrelación Espacial - Diagramas de Moran", fontsize=14, fontweight='bold', y=1.02)
+    plt.tight_layout()
+    save_figure(fig, 'moran_scatterplots.png')
+    plt.show()
+```
+
+### Análisis LISA
+
+```{python}
+#| label: lisa-analysis
+
+def clasificar_lisa(lisa, data):
+    significativo = lisa.p_sim < 0.05
+    q = lisa.q
+    cluster_labels = ['No significativo'] * len(data)
+    for i in range(len(data)):
+        if significativo[i]:
+            if q[i] == 1: cluster_labels[i] = 'Alto-Alto (Hot Spot)'
+            elif q[i] == 2: cluster_labels[i] = 'Bajo-Alto'
+            elif q[i] == 3: cluster_labels[i] = 'Bajo-Bajo (Cold Spot)'
+            elif q[i] == 4: cluster_labels[i] = 'Alto-Bajo'
+    return cluster_labels
+
+lisa_2023 = lisa_2024 = lisa_cambio = None
+
+if has_spatial_data and pesos is not None:
+    if gdf_lme['LME_2023'].var() > 0:
+        lisa_2023 = Moran_Local(gdf_lme['LME_2023'], pesos)
+        gdf_lme['cluster_2023'] = clasificar_lisa(lisa_2023, gdf_lme)
+        gdf_lme['lisa_p_2023'] = lisa_2023.p_sim
+    if gdf_lme['LME_2024'].var() > 0:
+        lisa_2024 = Moran_Local(gdf_lme['LME_2024'], pesos)
+        gdf_lme['cluster_2024'] = clasificar_lisa(lisa_2024, gdf_lme)
+        gdf_lme['lisa_p_2024'] = lisa_2024.p_sim
+    if gdf_lme['Cambio'].var() > 0:
+        lisa_cambio = Moran_Local(gdf_lme['Cambio'], pesos)
+        gdf_lme['cluster_cambio'] = clasificar_lisa(lisa_cambio, gdf_lme)
+```
+
+```{python}
+#| label: fig-lisa-maps
+#| fig-cap: "Mapas de Clusters LISA"
+
+colors_dict = {
+    'Alto-Alto (Hot Spot)': '#d73027', 'Bajo-Bajo (Cold Spot)': '#4575b4',
+    'Alto-Bajo': '#fdae61', 'Bajo-Alto': '#abd9e9', 'No significativo': '#f0f0f0'
+}
+
+if has_spatial_data and 'cluster_2023' in gdf_lme.columns:
+    fig, axes = plt.subplots(1, 3, figsize=(18, 8))
+    gdf_lme.plot(ax=axes[0], color=gdf_lme['cluster_2023'].map(colors_dict), edgecolor='gray', linewidth=0.5)
+    axes[0].set_title('Clusters LISA - LME 2023', fontweight='bold')
+    axes[0].set_axis_off()
+    if 'cluster_2024' in gdf_lme.columns:
+        gdf_lme.plot(ax=axes[1], color=gdf_lme['cluster_2024'].map(colors_dict), edgecolor='gray', linewidth=0.5)
+    axes[1].set_title('Clusters LISA - LME 2024', fontweight='bold')
+    axes[1].set_axis_off()
+    if 'cluster_cambio' in gdf_lme.columns:
+        gdf_lme.plot(ax=axes[2], color=gdf_lme['cluster_cambio'].map(colors_dict), edgecolor='gray', linewidth=0.5)
+    axes[2].set_title('Clusters LISA - Cambio', fontweight='bold')
+    axes[2].set_axis_off()
+    legend_elements = [Patch(facecolor=color, edgecolor='black', label=label) for label, color in colors_dict.items()]
+    fig.legend(handles=legend_elements, loc='lower center', ncol=5, fontsize=10, bbox_to_anchor=(0.5, -0.02))
+    plt.suptitle('Indicadores Locales de Asociación Espacial (LISA)', fontsize=14, fontweight='bold', y=1.02)
+    plt.tight_layout()
+    save_figure(fig, 'lisa_clusters.png')
+    plt.show()
+```
+
+```{python}
+#| label: tbl-lisa-clusters
+#| tbl-cap: "Resumen de Clusters LISA"
+#| tbl-cap-location: bottom
+
+clusters_df = None
+if has_spatial_data and 'cluster_2024' in gdf_lme.columns:
+    clusters_2023 = gdf_lme['cluster_2023'].value_counts().reset_index()
+    clusters_2023.columns = ['Cluster', 'N Comunas 2023']
+    clusters_2024 = gdf_lme['cluster_2024'].value_counts().reset_index()
+    clusters_2024.columns = ['Cluster', 'N Comunas 2024']
+    clusters_df = clusters_2023.merge(clusters_2024, on='Cluster', how='outer').fillna(0)
+    clusters_df['N Comunas 2023'] = clusters_df['N Comunas 2023'].astype(int)
+    clusters_df['N Comunas 2024'] = clusters_df['N Comunas 2024'].astype(int)
+
+clusters_df.style.hide(axis="index") if clusters_df is not None else None
+```
+
+```{python}
+#| label: tbl-hotspots-detail
+#| tbl-cap: "Comunas en Hot Spots y Cold Spots - LME 2024"
+#| tbl-cap-location: bottom
+
+detail = None
+if has_spatial_data and 'cluster_2024' in gdf_lme.columns:
+    significant = gdf_lme[gdf_lme['cluster_2024'] != 'No significativo'].copy()
+    if len(significant) > 0:
+        cols = ['Comuna', 'LME_2023', 'LME_2024', 'Cambio', 'cluster_2024', 'lisa_p_2024']
+        cols = [c for c in cols if c in significant.columns]
+        detail = significant[cols].sort_values('cluster_2024')
+        detail.columns = ['Comuna', 'LME 2023', 'LME 2024', 'Cambio', 'Cluster', 'P-value'][:len(cols)]
+
+detail.style.format({'LME 2023': '{:.1f}', 'LME 2024': '{:.1f}', 
+                     'Cambio': '{:+.2f}', 'P-value': '{:.4f}'}).hide(axis="index") if detail is not None else None
+```
+
+## Mapas Interactivos
+
+### Mapa Interactivo - LME 2023
+
+```{python}
+#| label: fig-folium-2023
+#| fig-cap: "Mapa Interactivo - Lactancia Materna Exclusiva 2023"
+
+if has_spatial_data:
+    gdf_wgs84 = gdf_lme.to_crs(epsg=4326)
+    centroid = gdf_wgs84.geometry.unary_union.centroid
+    center = [centroid.y, centroid.x]
+    m_2023 = folium.Map(location=center, zoom_start=10, tiles='CartoDB positron')
+    
+    def style_2023(feature):
+        lme = feature['properties'].get('LME_2023', 0) or 0
+        if lme >= 60: color = '#1a9850'
+        elif lme >= 50: color = '#91cf60'
+        elif lme >= 40: color = '#d9ef8b'
+        elif lme >= 30: color = '#fee08b'
+        elif lme >= 20: color = '#fc8d59'
+        else: color = '#d73027'
+        return {'fillColor': color, 'color': 'black', 'weight': 1, 'fillOpacity': 0.7}
+    
+    folium.GeoJson(
+        gdf_wgs84.__geo_interface__, style_function=style_2023,
+        tooltip=folium.GeoJsonTooltip(
+            fields=['Comuna', 'LME_2023', 'LME_2024', 'Cambio'],
+            aliases=['Comuna:', 'LME 2023 (%):', 'LME 2024 (%):', 'Cambio (pp):'], localize=True
+        )
+    ).add_to(m_2023)
+    
+    legend_html = '''<div style="position: fixed; bottom: 50px; left: 50px; z-index: 1000; background-color: white;
+                padding: 10px; border: 2px solid grey; border-radius: 5px; font-size: 12px;">
+        <p><strong>LME 2023 (%)</strong></p>
+        <p><span style="background-color: #1a9850; padding: 2px 10px;">&nbsp;</span> ≥60%</p>
+        <p><span style="background-color: #91cf60; padding: 2px 10px;">&nbsp;</span> 50-59%</p>
+        <p><span style="background-color: #d9ef8b; padding: 2px 10px;">&nbsp;</span> 40-49%</p>
+        <p><span style="background-color: #fee08b; padding: 2px 10px;">&nbsp;</span> 30-39%</p>
+        <p><span style="background-color: #fc8d59; padding: 2px 10px;">&nbsp;</span> 20-29%</p>
+        <p><span style="background-color: #d73027; padding: 2px 10px;">&nbsp;</span> <20%</p></div>'''
+    m_2023.get_root().html.add_child(folium.Element(legend_html))
+    m_2023.save(os.path.join(output_path, 'mapa_interactivo_lme_2023.html'))
+    display(m_2023)
+```
+
+### Mapa Interactivo - LME 2024
+
+```{python}
+#| label: fig-folium-2024
+#| fig-cap: "Mapa Interactivo - Lactancia Materna Exclusiva 2024"
+
+if has_spatial_data:
+    m_2024 = folium.Map(location=center, zoom_start=10, tiles='CartoDB positron')
+    
+    def style_2024(feature):
+        lme = feature['properties'].get('LME_2024', 0) or 0
+        if lme >= 60: color = '#1a9850'
+        elif lme >= 50: color = '#91cf60'
+        elif lme >= 40: color = '#d9ef8b'
+        elif lme >= 30: color = '#fee08b'
+        elif lme >= 20: color = '#fc8d59'
+        else: color = '#d73027'
+        return {'fillColor': color, 'color': 'black', 'weight': 1, 'fillOpacity': 0.7}
+    
+    folium.GeoJson(
+        gdf_wgs84.__geo_interface__, style_function=style_2024,
+        tooltip=folium.GeoJsonTooltip(
+            fields=['Comuna', 'LME_2023', 'LME_2024', 'Cambio'],
+            aliases=['Comuna:', 'LME 2023 (%):', 'LME 2024 (%):', 'Cambio (pp):'], localize=True
+        )
+    ).add_to(m_2024)
+    
+    legend_html = '''<div style="position: fixed; bottom: 50px; left: 50px; z-index: 1000; background-color: white;
+                padding: 10px; border: 2px solid grey; border-radius: 5px; font-size: 12px;">
+        <p><strong>LME 2024 (%)</strong></p>
+        <p><span style="background-color: #1a9850; padding: 2px 10px;">&nbsp;</span> ≥60%</p>
+        <p><span style="background-color: #91cf60; padding: 2px 10px;">&nbsp;</span> 50-59%</p>
+        <p><span style="background-color: #d9ef8b; padding: 2px 10px;">&nbsp;</span> 40-49%</p>
+        <p><span style="background-color: #fee08b; padding: 2px 10px;">&nbsp;</span> 30-39%</p>
+        <p><span style="background-color: #fc8d59; padding: 2px 10px;">&nbsp;</span> 20-29%</p>
+        <p><span style="background-color: #d73027; padding: 2px 10px;">&nbsp;</span> <20%</p></div>'''
+    m_2024.get_root().html.add_child(folium.Element(legend_html))
+    m_2024.save(os.path.join(output_path, 'mapa_interactivo_lme_2024.html'))
+    display(m_2024)
+```
+
+### Mapa Interactivo - Cambio Interanual
+
+```{python}
+#| label: fig-folium-cambio
+#| fig-cap: "Mapa Interactivo - Cambio en LME (2024-2023)"
+
+if has_spatial_data:
+    m_cambio = folium.Map(location=center, zoom_start=10, tiles='CartoDB positron')
+    
+    def style_cambio(feature):
+        cambio = feature['properties'].get('Cambio', 0) or 0
+        if cambio >= 5: color = '#1a9850'
+        elif cambio >= 2: color = '#91cf60'
+        elif cambio >= 0: color = '#d9ef8b'
+        elif cambio >= -2: color = '#fee08b'
+        elif cambio >= -5: color = '#fc8d59'
+        else: color = '#d73027'
+        return {'fillColor': color, 'color': 'black', 'weight': 1, 'fillOpacity': 0.7}
+    
+    folium.GeoJson(
+        gdf_wgs84.__geo_interface__, style_function=style_cambio,
+        tooltip=folium.GeoJsonTooltip(
+            fields=['Comuna', 'LME_2023', 'LME_2024', 'Cambio'],
+            aliases=['Comuna:', 'LME 2023 (%):', 'LME 2024 (%):', 'Cambio (pp):'], localize=True
+        )
+    ).add_to(m_cambio)
+    
+    legend_html = '''<div style="position: fixed; bottom: 50px; left: 50px; z-index: 1000; background-color: white;
+                padding: 10px; border: 2px solid grey; border-radius: 5px; font-size: 12px;">
+        <p><strong>Cambio LME (pp)</strong></p>
+        <p><span style="background-color: #1a9850; padding: 2px 10px;">&nbsp;</span> ≥+5</p>
+        <p><span style="background-color: #91cf60; padding: 2px 10px;">&nbsp;</span> +2 a +5</p>
+        <p><span style="background-color: #d9ef8b; padding: 2px 10px;">&nbsp;</span> 0 a +2</p>
+        <p><span style="background-color: #fee08b; padding: 2px 10px;">&nbsp;</span> -2 a 0</p>
+        <p><span style="background-color: #fc8d59; padding: 2px 10px;">&nbsp;</span> -5 a -2</p>
+        <p><span style="background-color: #d73027; padding: 2px 10px;">&nbsp;</span> <-5</p></div>'''
+    m_cambio.get_root().html.add_child(folium.Element(legend_html))
+    m_cambio.save(os.path.join(output_path, 'mapa_interactivo_cambio.html'))
+    display(m_cambio)
+```
+
+### Mapa Interactivo - Clusters LISA 2023
+
+```{python}
+#| label: fig-folium-lisa-2023
+#| fig-cap: "Mapa Interactivo - Clusters LISA 2023"
+
+if has_spatial_data and 'cluster_2023' in gdf_lme.columns:
+    m_lisa_2023 = folium.Map(location=center, zoom_start=10, tiles='CartoDB positron')
+    
+    cluster_colors = {
+        'Alto-Alto (Hot Spot)': '#d73027', 'Bajo-Bajo (Cold Spot)': '#4575b4',
+        'Alto-Bajo': '#fdae61', 'Bajo-Alto': '#abd9e9', 'No significativo': '#d9d9d9'
+    }
+    
+    def style_lisa_2023(feature):
+        cluster = feature['properties'].get('cluster_2023', 'No significativo')
+        return {'fillColor': cluster_colors.get(cluster, '#d9d9d9'), 'color': 'black', 'weight': 1, 'fillOpacity': 0.7}
+    
+    folium.GeoJson(
+        gdf_wgs84.__geo_interface__, style_function=style_lisa_2023,
+        tooltip=folium.GeoJsonTooltip(
+            fields=['Comuna', 'LME_2023', 'cluster_2023'],
+            aliases=['Comuna:', 'LME 2023 (%):', 'Cluster LISA:'], localize=True
+        )
+    ).add_to(m_lisa_2023)
+    
+    legend_html = '''<div style="position: fixed; bottom: 50px; left: 50px; z-index: 1000; background-color: white;
+                padding: 10px; border: 2px solid grey; border-radius: 5px; font-size: 12px;">
+        <p><strong>Clusters LISA 2023</strong></p>
+        <p><span style="background-color: #d73027; padding: 2px 10px;">&nbsp;</span> Hot Spot (Alto-Alto)</p>
+        <p><span style="background-color: #4575b4; padding: 2px 10px;">&nbsp;</span> Cold Spot (Bajo-Bajo)</p>
+        <p><span style="background-color: #fdae61; padding: 2px 10px;">&nbsp;</span> Alto-Bajo</p>
+        <p><span style="background-color: #abd9e9; padding: 2px 10px;">&nbsp;</span> Bajo-Alto</p>
+        <p><span style="background-color: #d9d9d9; padding: 2px 10px;">&nbsp;</span> No significativo</p></div>'''
+    m_lisa_2023.get_root().html.add_child(folium.Element(legend_html))
+    m_lisa_2023.save(os.path.join(output_path, 'mapa_interactivo_lisa_2023.html'))
+    display(m_lisa_2023)
+```
+
+### Mapa Interactivo - Clusters LISA 2024
+
+```{python}
+#| label: fig-folium-lisa-2024
+#| fig-cap: "Mapa Interactivo - Clusters LISA 2024"
+
+if has_spatial_data and 'cluster_2024' in gdf_lme.columns:
+    m_lisa_2024 = folium.Map(location=center, zoom_start=10, tiles='CartoDB positron')
+    
+    def style_lisa_2024(feature):
+        cluster = feature['properties'].get('cluster_2024', 'No significativo')
+        return {'fillColor': cluster_colors.get(cluster, '#d9d9d9'), 'color': 'black', 'weight': 1, 'fillOpacity': 0.7}
+    
+    folium.GeoJson(
+        gdf_wgs84.__geo_interface__, style_function=style_lisa_2024,
+        tooltip=folium.GeoJsonTooltip(
+            fields=['Comuna', 'LME_2024', 'cluster_2024'],
+            aliases=['Comuna:', 'LME 2024 (%):', 'Cluster LISA:'], localize=True
+        )
+    ).add_to(m_lisa_2024)
+    
+    legend_html = '''<div style="position: fixed; bottom: 50px; left: 50px; z-index: 1000; background-color: white;
+                padding: 10px; border: 2px solid grey; border-radius: 5px; font-size: 12px;">
+        <p><strong>Clusters LISA 2024</strong></p>
+        <p><span style="background-color: #d73027; padding: 2px 10px;">&nbsp;</span> Hot Spot (Alto-Alto)</p>
+        <p><span style="background-color: #4575b4; padding: 2px 10px;">&nbsp;</span> Cold Spot (Bajo-Bajo)</p>
+        <p><span style="background-color: #fdae61; padding: 2px 10px;">&nbsp;</span> Alto-Bajo</p>
+        <p><span style="background-color: #abd9e9; padding: 2px 10px;">&nbsp;</span> Bajo-Alto</p>
+        <p><span style="background-color: #d9d9d9; padding: 2px 10px;">&nbsp;</span> No significativo</p></div>'''
+    m_lisa_2024.get_root().html.add_child(folium.Element(legend_html))
+    m_lisa_2024.save(os.path.join(output_path, 'mapa_interactivo_lisa_2024.html'))
+    display(m_lisa_2024)
+```
+
+### Mapa Interactivo - Clusters LISA Cambio
+
+```{python}
+#| label: fig-folium-lisa-cambio
+#| fig-cap: "Mapa Interactivo - Clusters LISA del Cambio"
+
+if has_spatial_data and 'cluster_cambio' in gdf_lme.columns:
+    m_lisa_cambio = folium.Map(location=center, zoom_start=10, tiles='CartoDB positron')
+    
+    def style_lisa_cambio(feature):
+        cluster = feature['properties'].get('cluster_cambio', 'No significativo')
+        return {'fillColor': cluster_colors.get(cluster, '#d9d9d9'), 'color': 'black', 'weight': 1, 'fillOpacity': 0.7}
+    
+    folium.GeoJson(
+        gdf_wgs84.__geo_interface__, style_function=style_lisa_cambio,
+        tooltip=folium.GeoJsonTooltip(
+            fields=['Comuna', 'Cambio', 'cluster_cambio'],
+            aliases=['Comuna:', 'Cambio (pp):', 'Cluster LISA:'], localize=True
+        )
+    ).add_to(m_lisa_cambio)
+    
+    legend_html = '''<div style="position: fixed; bottom: 50px; left: 50px; z-index: 1000; background-color: white;
+                padding: 10px; border: 2px solid grey; border-radius: 5px; font-size: 12px;">
+        <p><strong>Clusters LISA - Cambio</strong></p>
+        <p><span style="background-color: #d73027; padding: 2px 10px;">&nbsp;</span> Hot Spot (Mejora agrupada)</p>
+        <p><span style="background-color: #4575b4; padding: 2px 10px;">&nbsp;</span> Cold Spot (Deterioro agrupado)</p>
+        <p><span style="background-color: #fdae61; padding: 2px 10px;">&nbsp;</span> Alto-Bajo</p>
+        <p><span style="background-color: #abd9e9; padding: 2px 10px;">&nbsp;</span> Bajo-Alto</p>
+        <p><span style="background-color: #d9d9d9; padding: 2px 10px;">&nbsp;</span> No significativo</p></div>'''
+    m_lisa_cambio.get_root().html.add_child(folium.Element(legend_html))
+    m_lisa_cambio.save(os.path.join(output_path, 'mapa_interactivo_lisa_cambio.html'))
+    display(m_lisa_cambio)
+```
+
+## Resumen del Análisis Geoespacial
+
+```{python}
+#| label: tbl-resumen-espacial
+#| tbl-cap: "Resumen del Análisis Geoespacial"
+#| tbl-cap-location: bottom
+
+resumen = None
+if has_spatial_data:
+    resumen = pd.DataFrame({
+        'Métrica': [
+            'Comunas analizadas', 'LME promedio 2023 (%)', 'LME promedio 2024 (%)',
+            'Cambio promedio (pp)', "Moran's I (LME 2024)", 'P-value Moran',
+            'Patrón espacial', 'Hot Spots 2024', 'Cold Spots 2024'
+        ],
+        'Valor': [
+            len(gdf_lme), f"{gdf_lme['LME_2023'].mean():.1f}", f"{gdf_lme['LME_2024'].mean():.1f}",
+            f"{gdf_lme['Cambio'].mean():+.2f}",
+            f"{moran_2024.I:.4f}" if moran_2024 else 'N/A',
+            f"{moran_2024.p_norm:.4f}" if moran_2024 else 'N/A',
+            'Agrupado' if moran_2024 and moran_2024.I > 0 and moran_2024.p_norm < 0.05 else 'Aleatorio',
+            (gdf_lme['cluster_2024'] == 'Alto-Alto (Hot Spot)').sum() if 'cluster_2024' in gdf_lme.columns else 0,
+            (gdf_lme['cluster_2024'] == 'Bajo-Bajo (Cold Spot)').sum() if 'cluster_2024' in gdf_lme.columns else 0
+        ]
+    })
+
+resumen.style.hide(axis="index") if resumen is not None else None
+```
+
+## Conclusiones
+
+Este análisis proporciona una visión integral de los patrones de lactancia materna en la Región Metropolitana de Chile:
+
+1. **Tendencias temporales**: Evolución de LME entre 2023 y 2024
+2. **Patrones espaciales**: Clusters identificados mediante Moran's I y LISA
+3. **Hot/Cold Spots**: Comunas con concentraciones significativas
+4. **Mapas interactivos**: Visualización dinámica de todos los resultados
+
+### Mapa Interactivo Completo con Control de Capas
+
+```{python}
+#| label: fig-folium-completo
+#| fig-cap: "Mapa Interactivo Completo - Todas las Variables"
+
+if has_spatial_data:
+    gdf_wgs84 = gdf_lme.to_crs(epsg=4326)
+    centroid = gdf_wgs84.geometry.unary_union.centroid
+    center = [centroid.y, centroid.x]
+    
+    m_completo = folium.Map(location=center, zoom_start=10, tiles=None)
+    
+    # Agregar tiles base
+    folium.TileLayer('CartoDB positron', name='Mapa Base Claro').add_to(m_completo)
+    folium.TileLayer('CartoDB dark_matter', name='Mapa Base Oscuro').add_to(m_completo)
+    folium.TileLayer('OpenStreetMap', name='OpenStreetMap').add_to(m_completo)
+    
+    # Colores para LME
+    def get_lme_color(lme):
+        if lme >= 60: return '#1a9850'
+        elif lme >= 50: return '#91cf60'
+        elif lme >= 40: return '#d9ef8b'
+        elif lme >= 30: return '#fee08b'
+        elif lme >= 20: return '#fc8d59'
+        else: return '#d73027'
+    
+    # Colores para Cambio
+    def get_cambio_color(cambio):
+        if cambio >= 5: return '#1a9850'
+        elif cambio >= 2: return '#91cf60'
+        elif cambio >= 0: return '#d9ef8b'
+        elif cambio >= -2: return '#fee08b'
+        elif cambio >= -5: return '#fc8d59'
+        else: return '#d73027'
+    
+    # Colores para clusters
+    cluster_colors = {
+        'Alto-Alto (Hot Spot)': '#d73027', 'Bajo-Bajo (Cold Spot)': '#4575b4',
+        'Alto-Bajo': '#fdae61', 'Bajo-Alto': '#abd9e9', 'No significativo': '#d9d9d9'
+    }
+    
+    # Capa LME 2023
+    fg_2023 = folium.FeatureGroup(name='LME 2023 (%)', show=True)
+    for idx, row in gdf_wgs84.iterrows():
+        folium.GeoJson(
+            row.geometry.__geo_interface__,
+            style_function=lambda x, lme=row['LME_2023']: {
+                'fillColor': get_lme_color(lme), 'color': 'black', 'weight': 1, 'fillOpacity': 0.7
+            },
+            tooltip=f"{row.get('Comuna', 'N/A')}: {row['LME_2023']:.1f}%"
+        ).add_to(fg_2023)
+    fg_2023.add_to(m_completo)
+    
+    # Capa LME 2024
+    fg_2024 = folium.FeatureGroup(name='LME 2024 (%)', show=False)
+    for idx, row in gdf_wgs84.iterrows():
+        folium.GeoJson(
+            row.geometry.__geo_interface__,
+            style_function=lambda x, lme=row['LME_2024']: {
+                'fillColor': get_lme_color(lme), 'color': 'black', 'weight': 1, 'fillOpacity': 0.7
+            },
+            tooltip=f"{row.get('Comuna', 'N/A')}: {row['LME_2024']:.1f}%"
+        ).add_to(fg_2024)
+    fg_2024.add_to(m_completo)
+    
+    # Capa Cambio
+    fg_cambio = folium.FeatureGroup(name='Cambio (pp)', show=False)
+    for idx, row in gdf_wgs84.iterrows():
+        folium.GeoJson(
+            row.geometry.__geo_interface__,
+            style_function=lambda x, cambio=row['Cambio']: {
+                'fillColor': get_cambio_color(cambio), 'color': 'black', 'weight': 1, 'fillOpacity': 0.7
+            },
+            tooltip=f"{row.get('Comuna', 'N/A')}: {row['Cambio']:+.1f} pp"
+        ).add_to(fg_cambio)
+    fg_cambio.add_to(m_completo)
+    
+    # Capa Clusters LISA 2023
+    if 'cluster_2023' in gdf_wgs84.columns:
+        fg_lisa_2023 = folium.FeatureGroup(name='Clusters LISA 2023', show=False)
+        for idx, row in gdf_wgs84.iterrows():
+            folium.GeoJson(
+                row.geometry.__geo_interface__,
+                style_function=lambda x, cluster=row['cluster_2023']: {
+                    'fillColor': cluster_colors.get(cluster, '#d9d9d9'), 'color': 'black', 'weight': 1, 'fillOpacity': 0.7
+                },
+                tooltip=f"{row.get('Comuna', 'N/A')}: {row['cluster_2023']}"
+            ).add_to(fg_lisa_2023)
+        fg_lisa_2023.add_to(m_completo)
+    
+    # Capa Clusters LISA 2024
+    if 'cluster_2024' in gdf_wgs84.columns:
+        fg_lisa_2024 = folium.FeatureGroup(name='Clusters LISA 2024', show=False)
+        for idx, row in gdf_wgs84.iterrows():
+            folium.GeoJson(
+                row.geometry.__geo_interface__,
+                style_function=lambda x, cluster=row['cluster_2024']: {
+                    'fillColor': cluster_colors.get(cluster, '#d9d9d9'), 'color': 'black', 'weight': 1, 'fillOpacity': 0.7
+                },
+                tooltip=f"{row.get('Comuna', 'N/A')}: {row['cluster_2024']}"
+            ).add_to(fg_lisa_2024)
+        fg_lisa_2024.add_to(m_completo)
+    
+    # Capa Clusters LISA Cambio
+    if 'cluster_cambio' in gdf_wgs84.columns:
+        fg_lisa_cambio = folium.FeatureGroup(name='Clusters LISA Cambio', show=False)
+        for idx, row in gdf_wgs84.iterrows():
+            folium.GeoJson(
+                row.geometry.__geo_interface__,
+                style_function=lambda x, cluster=row['cluster_cambio']: {
+                    'fillColor': cluster_colors.get(cluster, '#d9d9d9'), 'color': 'black', 'weight': 1, 'fillOpacity': 0.7
+                },
+                tooltip=f"{row.get('Comuna', 'N/A')}: {row['cluster_cambio']}"
+            ).add_to(fg_lisa_cambio)
+        fg_lisa_cambio.add_to(m_completo)
+    
+    # Agregar control de capas
+    folium.LayerControl(collapsed=False).add_to(m_completo)
+    
+    # Leyenda HTML
+    legend_html = '''
+    <div style="position: fixed; bottom: 50px; left: 50px; z-index: 1000; background-color: white;
+                padding: 15px; border: 2px solid grey; border-radius: 5px; font-size: 11px; max-width: 200px;">
+        <p style="font-weight: bold; margin-bottom: 10px;">Leyenda LME (%)</p>
+        <p><span style="background-color: #1a9850; padding: 2px 10px;">&nbsp;</span> ≥60%</p>
+        <p><span style="background-color: #91cf60; padding: 2px 10px;">&nbsp;</span> 50-59%</p>
+        <p><span style="background-color: #d9ef8b; padding: 2px 10px;">&nbsp;</span> 40-49%</p>
+        <p><span style="background-color: #fee08b; padding: 2px 10px;">&nbsp;</span> 30-39%</p>
+        <p><span style="background-color: #fc8d59; padding: 2px 10px;">&nbsp;</span> 20-29%</p>
+        <p><span style="background-color: #d73027; padding: 2px 10px;">&nbsp;</span> <20%</p>
+        <hr style="margin: 10px 0;">
+        <p style="font-weight: bold; margin-bottom: 10px;">Clusters LISA</p>
+        <p><span style="background-color: #d73027; padding: 2px 10px;">&nbsp;</span> Hot Spot</p>
+        <p><span style="background-color: #4575b4; padding: 2px 10px;">&nbsp;</span> Cold Spot</p>
+        <p><span style="background-color: #fdae61; padding: 2px 10px;">&nbsp;</span> Alto-Bajo</p>
+        <p><span style="background-color: #abd9e9; padding: 2px 10px;">&nbsp;</span> Bajo-Alto</p>
+        <p><span style="background-color: #d9d9d9; padding: 2px 10px;">&nbsp;</span> No signif.</p>
+    </div>
+    '''
+    m_completo.get_root().html.add_child(folium.Element(legend_html))
+    
+    m_completo.save(os.path.join(output_path, 'mapa_interactivo_completo.html'))
+    display(m_completo)
+```
+
+**Archivos de salida** en `output_files/`:
+
+- `mapa_interactivo_completo.html` - Mapa con todas las capas y control
+- `mapa_interactivo_lme_2023.html` - LME 2023
+- `mapa_interactivo_lme_2024.html` - LME 2024
+- `mapa_interactivo_cambio.html` - Cambio interanual
+- `mapa_interactivo_lisa_2023.html` - Clusters LISA 2023
+- `mapa_interactivo_lisa_2024.html` - Clusters LISA 2024
+- `mapa_interactivo_lisa_cambio.html` - Clusters LISA del cambio
+- `lme_comuna_comparacion.csv` - Datos por comuna

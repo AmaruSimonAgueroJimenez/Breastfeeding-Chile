@@ -1,0 +1,944 @@
+---
+title: "Análisis de Lactancia Materna en Chile 2019-2024"
+lang: es
+author:
+  - name: "Análisis de Datos de Salud"
+    
+format:
+  html:
+    toc: true
+    number-sections: true
+    code-fold: true
+execute:
+  warning: false
+  message: false
+  fig-width: 12
+  fig-height: 10
+---
+
+# Análisis de Lactancia Materna en Chile 2023-2024
+
+## Introducción
+
+Este análisis examina los patrones de lactancia materna en Chile durante los años 2023 y 2024, considerando diferentes tipos de alimentación infantil, meses de vida del lactante y características demográficas.
+
+## Métodos
+
+### Configuración inicial y carga de paquetes
+
+```{r message=FALSE, warning=FALSE}
+install_and_load_packages <- function(packages) {
+  for (package in packages) {
+    if (!require(package, character.only = TRUE)) {
+      install.packages(package)
+      library(package, character.only = TRUE)
+    }
+  }
+}
+
+necessary_packages <- c("knitr", "tidyverse", "naniar", "kableExtra", 
+                        "DT", "readr", "data.table", "stringr", "ggpubr", 
+                        "scales", "plotly", "chilemapas")
+
+install_and_load_packages(necessary_packages)
+
+opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE)
+
+Sys.setenv("VROOM_CONNECTION_SIZE" = 100000000000)
+```
+
+### Carga y procesamiento de datos
+
+```{r}
+# ---- 1) Archivos 2019–2024 ---------------------------------------------------
+root <- paste0(gsub("/docs", "", getwd()), "/data/")
+file_paths <- list.files(root, pattern = "SerieA_.*\\.(txt|csv)$", full.names = TRUE)
+
+# Quedarse solo con 2019–2024 y ordenar
+years_found <- as.integer(gsub(".*_(\\d{4}).*", "\\1", basename(file_paths)))
+sel <- !is.na(years_found) & years_found >= 2019 & years_found <= 2024
+file_paths  <- file_paths[sel]
+years_found <- years_found[sel]
+ord <- order(years_found)
+file_paths  <- file_paths[ord]
+years_found <- years_found[ord]
+
+# ---- 2) Cargar a lista nombrada por año --------------------------------------
+lista_datos <- lapply(seq_along(file_paths), function(i) {
+  f <- file_paths[i]
+  data.table::fread(f, sep = ";", encoding = ifelse(grepl("_2024", f), "Latin-1", "UTF-8"))
+})
+names(lista_datos) <- as.character(years_found)
+
+# ---- 3) Filtrar por RM (código región 13) ------------------------------------
+lista_datos <- lapply(lista_datos, function(dt) {
+  dt[grepl("^13", as.character(IdComuna))]
+})
+
+# ---- 4) Filtrar por códigos de lactancia -------------------------------------
+codigos_lactancia <- c(
+  "A0200002",  # Lactancia Materna Exclusiva
+  "03500359",  # Lactancia Materna / Fórmula Láctea
+  "03500360",  # Fórmula Láctea
+  "A0200003",  # Lactancia Materna + Alimentación Complementaria
+  "03600140",  # LM / Fórmula / Alimentación Complementaria
+  "03600150",  # Fórmula + Alimentación Complementaria
+  "A0200001"   # Total Niños/as Controlados (denominador)
+)
+
+lista_datos_lactancia <- lapply(lista_datos, function(dt) dt[CodigoPrestacion %in% codigos_lactancia])
+
+# ---- 5) Helpers para mapear columnas por año (robusto entre 2019–2024) -------
+first_existing <- function(candidates, available) {
+  x <- candidates[candidates %in% available]
+  if (length(x) == 0) NA_character_ else x[1]
+}
+
+get_column_map <- function(dt, ano_chr) {
+  ano  <- as.integer(ano_chr)
+  cols <- names(dt)
+
+  if (ano <= 2023) {
+    # Formato tipo 2023
+    tot <- first_existing(c("Col01"), cols)          # TOTAL
+    m1  <- first_existing(c("Col03","Col04"), cols)  # 1° mes
+    m3  <- first_existing(c("Col04","Col05"), cols)  # 3° mes
+    m6  <- first_existing(c("Col05","Col06"), cols)  # 6° mes
+    po  <- first_existing(c("Col08","Col09"), cols)  # Pueblos Originarios
+    mi  <- first_existing(c("Col09","Col10"), cols)  # Migrantes
+  } else {
+    # Formato tipo 2024
+    tot <- first_existing(c("Col01"), cols)
+    m1  <- first_existing(c("Col04","Col03"), cols)
+    m3  <- first_existing(c("Col05","Col04"), cols)
+    m6  <- first_existing(c("Col06","Col05"), cols)
+    po  <- first_existing(c("Col09","Col08"), cols)
+    mi  <- first_existing(c("Col10","Col09"), cols)
+  }
+
+  columnas <- c(tot, m1, m3, m6, po, mi)
+  nombres  <- c("TOTAL","1° mes","3° mes","6° mes","Pueblos Originarios","Migrantes")
+  valid    <- !is.na(columnas)
+
+  list(columnas = columnas[valid], nombres = nombres[valid])
+}
+
+# ---- 6) Funciones de procesamiento (por año y por comuna) --------------------
+procesar_datos_año <- function(dt, ano_chr) {
+  map <- get_column_map(dt, ano_chr)
+
+  # Convertir a numérico de forma segura
+  dt[, (map$columnas) := lapply(.SD, function(x) as.numeric(gsub(",", ".", as.character(x)))),
+     .SDcols = map$columnas]
+
+  # Agregar por código de prestación
+  out <- dt[, lapply(.SD, sum, na.rm = TRUE),
+            by = .(CodigoPrestacion), .SDcols = map$columnas]
+  data.table::setnames(out, map$columnas, map$nombres)
+
+  # Descripciones legibles
+  out[, Tipo_Alimentacion := dplyr::recode(
+    CodigoPrestacion,
+    "A0200002" = "Lactancia Materna Exclusiva",
+    "03500359" = "Lactancia Materna / Fórmula Láctea",
+    "03500360" = "Fórmula Láctea",
+    "A0200003" = "Lactancia Materna + Alimentación Complementaria",
+    "03600140" = "LM / Fórmula / Alimentación Complementaria",
+    "03600150" = "Fórmula + Alimentación Complementaria",
+    "A0200001" = "Total Niños/as Controlados",
+    .default     = "Otro"
+  )]
+
+  out[, Año := as.integer(ano_chr)]
+  data.table::setcolorder(out, c("Año","CodigoPrestacion","Tipo_Alimentacion", map$nombres))
+  out[]
+}
+
+procesar_datos_comuna <- function(dt, ano_chr) {
+  map <- get_column_map(dt, ano_chr)
+
+  dt[, (map$columnas) := lapply(.SD, function(x) as.numeric(gsub(",", ".", as.character(x)))),
+     .SDcols = map$columnas]
+
+  out <- dt[, lapply(.SD, sum, na.rm = TRUE),
+            by = .(CodigoPrestacion, IdComuna), .SDcols = map$columnas]
+  data.table::setnames(out, map$columnas, map$nombres)
+
+  out[, Tipo_Alimentacion := dplyr::recode(
+    CodigoPrestacion,
+    "A0200002" = "Lactancia Materna Exclusiva",
+    "03500359" = "Lactancia Materna / Fórmula Láctea",
+    "03500360" = "Fórmula Láctea",
+    "A0200003" = "Lactancia Materna + Alimentación Complementaria",
+    "03600140" = "LM / Fórmula / Alimentación Complementaria",
+    "03600150" = "Fórmula + Alimentación Complementaria",
+    "A0200001" = "Total Niños/as Controlados",
+    .default     = "Otro"
+  )]
+
+  out[, Año := as.integer(ano_chr)]
+  data.table::setcolorder(out, c("Año","IdComuna","CodigoPrestacion","Tipo_Alimentacion", map$nombres))
+  out[]
+}
+
+# ---- 7) Aplicar a TODOS los años (listas nombradas) --------------------------
+resumen_anual <- lapply(names(lista_datos_lactancia), function(ano) {
+  procesar_datos_año(lista_datos_lactancia[[ano]], ano)
+})
+names(resumen_anual) <- names(lista_datos_lactancia)
+
+resumen_comuna <- lapply(names(lista_datos_lactancia), function(ano) {
+  procesar_datos_comuna(lista_datos_lactancia[[ano]], ano)
+})
+names(resumen_comuna) <- names(lista_datos_lactancia)
+
+# ---- 8) (Opcional) Combinar a un solo objeto por facilidad de análisis -------
+datos_anual  <- data.table::rbindlist(resumen_anual,  use.names = TRUE, fill = TRUE)
+datos_comuna <- data.table::rbindlist(resumen_comuna, use.names = TRUE, fill = TRUE)
+
+# datos_comuna <- data.table::rbindlist(resumen_comuna, use.names = TRUE, fill = TRUE)
+
+lut_comunas_rm <- tibble::tribble(
+  ~IdComuna, ~Comuna,
+  "13101","Santiago","13102","Cerrillos","13103","Cerro Navia","13104","Conchalí",
+  "13105","El Bosque","13106","Estación Central","13107","Huechuraba","13108","Independencia",
+  "13109","La Cisterna","13110","La Florida","13111","La Granja","13112","La Pintana",
+  "13113","La Reina","13114","Las Condes","13115","Lo Barnechea","13116","Lo Espejo",
+  "13117","Lo Prado","13118","Macul","13119","Maipú","13120","Ñuñoa",
+  "13121","Pedro Aguirre Cerda","13122","Peñalolén","13123","Providencia","13124","Pudahuel",
+  "13125","Quilicura","13126","Quinta Normal","13127","Recoleta","13128","Renca",
+  "13129","San Joaquín","13130","San Miguel","13131","San Ramón","13132","Vitacura",
+  "13201","Colina","13202","Lampa","13203","Tiltil",
+  "13301","Puente Alto","13302","Pirque","13303","San José de Maipo",
+  "13401","San Bernardo","13402","Buin","13403","Paine","13404","Calera de Tango",
+  "13501","Melipilla","13502","Alhué","13503","Curacaví","13504","María Pinto","13505","San Pedro",
+  "13601","Talagante","13602","El Monte","13603","Isla de Maipo","13604","Padre Hurtado","13605","Peñaflor"
+)
+
+# Normaliza tipo para evitar fallos en el join
+datos_comuna[, IdComuna := as.character(IdComuna)]
+
+# Agrega nombre de comuna a tu tabla combinada por comuna
+datos_comuna <- datos_comuna %>%
+  dplyr::left_join(lut_comunas_rm, by = "IdComuna") %>%
+  dplyr::mutate(Comuna = dplyr::coalesce(Comuna, IdComuna)) %>%
+  data.table::as.data.table()
+
+# Objetos de salida:
+# - lista_datos_lactancia : raw filtrado por año (2019–2024)
+# - resumen_anual         : lista por año (agregado por CodigoPrestacion)
+# - resumen_comuna        : lista por año (agregado por IdComuna + CodigoPrestacion)
+# - datos_anual / datos_comuna : combinados (útiles para ggplot, DT, etc.)
+```
+
+# Restultados
+
+## Total según tipo de lactancia 2019-2024
+
+```{r}
+
+# 1) Unir todo y quedarnos solo con tipos de lactancia (excluye A0200001)
+anual_all <- data.table::rbindlist(resumen_anual, use.names = TRUE, fill = TRUE)
+
+# Si hubiera nombres distintos por seguridad:
+if (!("Año" %in% names(anual_all))) {
+  stop("El objeto 'resumen_anual' debe contener una columna 'Año'.")
+}
+if (!("TOTAL" %in% names(anual_all))) {
+  stop("No se encontró la columna 'TOTAL' en los resúmenes anuales.")
+}
+
+lactancias <- anual_all[
+  Tipo_Alimentacion != "Total Niños/as Controlados" & !is.na(TOTAL)
+]
+
+# 2) Denominador: suma TOTAL por año de todos los tipos de lactancia
+den_anual <- lactancias[, .(Denominador_Anual = sum(TOTAL, na.rm = TRUE)), by = Año]
+
+# 3) Numerador: TOTAL por año y tipo (ya viene agregado por código; sum por robustez)
+num_anual <- lactancias[, .(Total = sum(TOTAL, na.rm = TRUE)), by = .(Año, Tipo_Alimentacion)]
+
+# 4) Calcular porcentaje por año y tipo
+tabla_totales_long <- den_anual[num_anual, on = "Año"][
+  , `Porcentaje (%)` := ifelse(Denominador_Anual > 0,
+                               round(100 * Total / Denominador_Anual, 2),
+                               NA_real_)
+][
+  , Denominador_Anual := NULL
+][order(Año, -`Porcentaje (%)`)]
+
+# 5) Vista WIDE (columnas por año, con Total y %)
+tabla_totales_wide <- tabla_totales_long %>%
+  mutate(Año = as.character(Año)) %>%
+  pivot_wider(
+    names_from  = Año,
+    values_from = c(Total, `Porcentaje (%)`),
+    names_sep   = " "
+  ) %>%
+  arrange(Tipo_Alimentacion)
+
+# 6) Tablas interactivas --------------------------------------------------------
+DT::datatable(
+  tabla_totales_long,
+  caption = "Totales y porcentajes por tipo de lactancia (denominador = suma anual de todos los tipos).",
+  extensions = c("Buttons"),
+  options = list(
+    dom = "Bfrtip",
+    buttons = c("copy", "csv", "excel", "pdf", "print"),
+    pageLength = 15,
+    scrollX = TRUE,
+    autoWidth = TRUE,
+    columnDefs = list(list(className = "dt-center", targets = "_all"))
+  )
+) %>%
+  DT::formatRound(columns = "Porcentaje (%)", digits = 2)
+
+```
+```{r}
+# Paleta Okabe–Ito (viva y color-blind friendly)
+pal_okabe_ito <- c(
+  "#0072B2", "#D55E00", "#009E73", "#CC79A7",
+  "#F0E442", "#56B4E9", "#E69F00", "#000000"
+)
+
+# Asegurar tipos y etiquetas
+plot_df <- tabla_totales_long %>%
+  dplyr::mutate(
+    Tipo_Alimentacion = as.factor(Tipo_Alimentacion),
+    label_pct = paste0(format(round(`Porcentaje (%)`, 1), nsmall = 1), "%")
+  )
+
+# Mapa estable de colores por tipo
+tipos <- levels(plot_df$Tipo_Alimentacion)
+pal_map <- setNames(rep(pal_okabe_ito, length.out = length(tipos)), tipos)
+
+yrs <- sort(unique(plot_df$Año))
+
+library(ggplot2)
+p_lineas <- ggplot(
+  plot_df,
+  aes(x = Año, y = `Porcentaje (%)`,
+      color = Tipo_Alimentacion, group = Tipo_Alimentacion)
+) +
+  geom_line(linewidth = 1.1, alpha = 0.55) +
+  geom_point(size = 2.6, alpha = 0.9) +
+  geom_text(aes(label = label_pct),
+            vjust = -0.6, size = 3, show.legend = FALSE, check_overlap = TRUE) +
+  scale_color_manual(values = pal_map, name = "Tipo de lactancia") +
+  scale_x_continuous(breaks = yrs) +
+  scale_y_continuous(
+    labels = scales::percent_format(scale = 1),
+    limits = c(0, NA), expand = expansion(mult = c(0.02, 0.08))
+  ) +
+  labs(
+    title = "Evolución anual de los porcentajes por tipo de lactancia (RM)",
+    subtitle = "Denominador: suma anual de todos los tipos de lactancia",
+    x = "Año",
+    y = "Porcentaje del total anual"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
+
+p_lineas
+
+```
+## Total según tipo de lactancia y mes de lactancia 2019-2024
+
+```{r}
+# --- 1) Porcentajes por mes (1°, 3°, 6°): denominador = suma anual por mes ----
+# Requiere: 'resumen_anual' (lista por año) ya creada con columnas "1° mes", "3° mes", "6° mes".
+library(data.table); library(dplyr); library(tidyr)
+
+build_long_mes <- function(dt) {
+  cols_meses <- c("1° mes","3° mes","6° mes")
+  use_cols   <- intersect(cols_meses, names(dt))
+  if (length(use_cols) == 0) return(NULL)
+
+  d <- data.table::copy(dt)
+  # Excluir el denominador de niños controlados si existiera en las columnas de mes
+  d <- d[Tipo_Alimentacion != "Total Niños/as Controlados"]
+
+  long <- data.table::melt(
+    d,
+    id.vars = c("Año","CodigoPrestacion","Tipo_Alimentacion"),
+    measure.vars = use_cols,
+    variable.name = "Mes",
+    value.name = "TotalMes",
+    variable.factor = FALSE
+  )
+  long[, TotalMes := as.numeric(TotalMes)]
+  long
+}
+
+meses_long_list <- lapply(resumen_anual, build_long_mes)
+meses_long <- data.table::rbindlist(
+  Filter(Negate(is.null), meses_long_list), use.names = TRUE, fill = TRUE
+)
+
+# Denominador por Año-Mes = suma de todos los tipos
+den_mes <- meses_long[, .(DenomMes = sum(TotalMes, na.rm = TRUE)), by = .(Año, Mes)]
+
+# Tabla LONG final con % por mes
+tabla_meses_long <- den_mes[meses_long, on = c("Año","Mes")][
+  , `Porcentaje (%)` := ifelse(DenomMes > 0, round(100 * TotalMes / DenomMes, 2), NA_real_)
+][
+  , .(Año,
+      Mes = factor(Mes, levels = c("1° mes","3° mes","6° mes")),
+      Tipo_Alimentacion,
+      Total = TotalMes,
+      `Porcentaje (%)`)
+][order(Mes, Año, -`Porcentaje (%)`)]
+
+# (Opcional) Tablas WIDE por mes (lista): Total y % en columnas por Año
+mes_levels <- levels(na.omit(tabla_meses_long$Mes))
+tablas_mes_wide <- lapply(mes_levels, function(m) {
+  tabla_meses_long %>%
+    dplyr::filter(Mes == m) %>%
+    tidyr::pivot_wider(
+      names_from  = Año,
+      values_from = c(Total, `Porcentaje (%)`),
+      names_sep   = " "
+    ) %>%
+    arrange(Tipo_Alimentacion)
+})
+names(tablas_mes_wide) <- mes_levels
+
+```
+
+
+```{r}
+# --- 2) Tabla interactiva LONG (todos los meses juntos) -----------------------
+library(DT)
+DT::datatable(
+  tabla_meses_long,
+  caption = "Totales y porcentajes por mes (1°, 3°, 6°) y tipo de lactancia. Denominador: suma por mes y año.",
+  extensions = c("Buttons"),
+  options = list(
+    dom = "Bfrtip",
+    buttons = c("copy", "csv", "excel", "pdf", "print"),
+    pageLength = 15,
+    scrollX = TRUE,
+    autoWidth = TRUE,
+    columnDefs = list(list(className = "dt-center", targets = "_all"))
+  )
+) %>%
+  DT::formatRound(columns = "Porcentaje (%)", digits = 2)
+
+```
+```{r}
+# --- 3) Gráfico de líneas con facet_wrap por mes ------------------------------
+library(ggplot2); library(scales)
+
+# Paleta Okabe–Ito (viva y segura para daltónicos)
+pal_okabe_ito <- c(
+  "#0072B2", "#D55E00", "#009E73", "#CC79A7",
+  "#F0E442", "#56B4E9", "#E69F00", "#000000"
+)
+
+plot_df <- tabla_meses_long %>%
+  mutate(
+    Tipo_Alimentacion = as.factor(Tipo_Alimentacion),
+    Mes = factor(Mes, levels = c("1° mes","3° mes","6° mes")),
+    label_pct = ifelse(is.finite(`Porcentaje (%)`),
+                       paste0(format(round(`Porcentaje (%)`, 1), nsmall = 1), "%"),
+                       NA_character_)
+  )
+
+tipos <- levels(plot_df$Tipo_Alimentacion)
+pal_map <- setNames(rep(pal_okabe_ito, length.out = length(tipos)), tipos)
+yrs <- sort(unique(plot_df$Año))
+
+ggplot(
+  plot_df,
+  aes(x = Año, y = `Porcentaje (%)`,
+      color = Tipo_Alimentacion, group = Tipo_Alimentacion)
+) +
+  geom_line(linewidth = 1.1, alpha = 0.55) +
+  geom_point(size = 2.6, alpha = 0.9) +
+  geom_text(aes(label = label_pct),
+            vjust = -0.6, size = 3, show.legend = FALSE, check_overlap = TRUE, na.rm = TRUE) +
+  scale_color_manual(values = pal_map, name = "Tipo de lactancia") +
+  scale_x_continuous(breaks = yrs) +
+  scale_y_continuous(
+    labels = scales::percent_format(scale = 1),
+    limits = c(0, 100),
+    expand = expansion(mult = c(0.02, 0.08))
+  ) +
+  facet_wrap(~ Mes, nrow = 1) +
+  labs(
+    title = "Evolución anual por mes de lactancia (1°, 3°, 6°)",
+    subtitle = "Denominador: suma anual por cada mes y tipo (RM)",
+    x = "Año",
+    y = "Porcentaje dentro del total del mes"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
+
+```
+```{r}
+library(ggplot2)
+library(dplyr)
+library(scales)
+
+# Paleta viva (Okabe–Ito)
+pal_okabe_ito <- c("#0072B2","#D55E00","#009E73","#CC79A7",
+                   "#F0E442","#56B4E9","#E69F00","#000000")
+
+# ---------- Anual: composición 100% por año ----------
+df_a <- tabla_totales_long %>%
+  mutate(
+    Año = factor(Año),
+    Tipo_Alimentacion = as.factor(Tipo_Alimentacion),
+    label = ifelse(`Porcentaje (%)` >= 5,
+                   paste0(round(`Porcentaje (%)`,1),"%"), NA_character_)
+  )
+
+tipos_a <- levels(df_a$Tipo_Alimentacion)
+pal_map_a <- setNames(rep(pal_okabe_ito, length.out = length(tipos_a)), tipos_a)
+
+ggplot(df_a, aes(x = Año, y = Total, fill = Tipo_Alimentacion)) +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.9) +
+  geom_text(aes(label = label),
+            position = position_fill(vjust = 0.5),
+            size = 3, color = "white", na.rm = TRUE, show.legend = FALSE) +
+  scale_fill_manual(values = pal_map_a, name = "Tipo de lactancia") +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  labs(
+    title = "Composición anual (100% apilado)",
+    subtitle = "Cada barra es un año; alturas relativas = participación por tipo",
+    x = "Año", y = "Participación dentro del año"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "bottom", panel.grid.minor = element_blank())
+
+```
+```{r}
+library(data.table); library(dplyr); library(DT)
+
+# --- A) Asegurar tabla_comunas_long (si no existe, se construye) --------------
+if (!exists("tabla_comunas_long")) {
+  stopifnot(exists("resumen_comuna"))
+  comunal_all <- data.table::rbindlist(resumen_comuna, use.names = TRUE, fill = TRUE)
+
+  # Solo tipos de lactancia (excluye el total de niños controlados)
+  comunal_lact <- comunal_all[
+    Tipo_Alimentacion != "Total Niños/as Controlados" & !is.na(TOTAL)
+  ]
+
+  # Normalizar tipo para joins
+  comunal_lact[, IdComuna := as.character(IdComuna)]
+
+  # Numerador: TOTAL por (Año, IdComuna, Tipo)
+  num_by_comm <- comunal_lact[
+    , .(Total = sum(TOTAL, na.rm = TRUE)), by = .(Año, IdComuna, Tipo_Alimentacion)
+  ]
+
+  # Denominador: suma de todos los tipos por (Año, IdComuna)
+  den_by_comm <- num_by_comm[
+    , .(Denom = sum(Total, na.rm = TRUE)), by = .(Año, IdComuna)
+  ]
+
+  # Porcentajes por comuna-año-tipo
+  tabla_comunas_long <- den_by_comm[num_by_comm, on = c("Año","IdComuna")][
+    , `Porcentaje (%)` := ifelse(Denom > 0, round(100 * Total / Denom, 2), NA_real_)
+  ][
+    , .(Año, IdComuna, Tipo_Alimentacion, Total, `Porcentaje (%)`)
+  ]
+}
+
+# --- B) Agregar NOMBRES de comuna usando tu LUT manual (RM) -------------------
+# Requiere: objeto 'lut_comunas_rm' ya creado
+lut_comunas_rm <- lut_comunas_rm %>% 
+  mutate(IdComuna = as.character(IdComuna))
+
+tabla_comunas_long[, IdComuna := as.character(IdComuna)]
+tabla_comunas_long <- tabla_comunas_long %>%
+  left_join(lut_comunas_rm, by = "IdComuna") %>%
+  mutate(Comuna = coalesce(Comuna, IdComuna)) %>%
+  data.table::as.data.table()
+
+# --- C) Tabla completa ordenada (todas las comunas × años × tipos) ------------
+tabla_comunas_completa <- tabla_comunas_long %>%
+  select(Comuna, Año, Tipo_Alimentacion, Total, `Porcentaje (%)`) %>%
+  arrange(Comuna, Año, Tipo_Alimentacion)
+
+DT::datatable(
+  tabla_comunas_completa,
+  caption = "Comunas RM: Totales y porcentajes por año y tipo de lactancia (denominador = suma de tipos por comuna-año).",
+  extensions = c("Buttons"),
+  options = list(
+    dom = "Bfrtip",
+    buttons = c("copy","csv","excel","pdf","print"),
+    pageLength = 25,
+    scrollX = TRUE,
+    autoWidth = TRUE,
+    columnDefs = list(list(className = "dt-center", targets = "_all"))
+  )
+) %>%
+  DT::formatRound(columns = "Porcentaje (%)", digits = 2)
+
+```
+```{r}
+library(ggplot2); library(scales); library(dplyr)
+
+# --- Asegurar nombres de comuna en tabla_comunas_long -------------------------
+if (!"Comuna" %in% names(tabla_comunas_long)) {
+  stopifnot(exists("lut_comunas_rm"))
+  tabla_comunas_long <- tabla_comunas_long %>%
+    mutate(IdComuna = as.character(IdComuna)) %>%
+    left_join(lut_comunas_rm %>% mutate(IdComuna = as.character(IdComuna)),
+              by = "IdComuna") %>%
+    mutate(Comuna = coalesce(Comuna, IdComuna))
+}
+
+# Asegurar tipo numérico para el eje X
+tabla_comunas_long <- tabla_comunas_long %>%
+  mutate(Año = as.integer(Año))
+
+# --- Selección: 10 comunas con menor % de LME en 2024 -------------------------
+sel10_2024 <- tabla_comunas_long %>%
+  filter(Año == 2024,
+         Tipo_Alimentacion == "Lactancia Materna Exclusiva",
+         !is.na(`Porcentaje (%)`)) %>%
+  arrange(`Porcentaje (%)`, Total) %>%
+  slice_head(n = 10)
+
+orden_facetas <- sel10_2024 %>%
+  arrange(`Porcentaje (%)`) %>%
+  pull(Comuna)
+
+# --- Datos para el gráfico: TODOS los tipos para esas 10 comunas --------------
+plot_df_alltypes <- tabla_comunas_long %>%
+  filter(Comuna %in% orden_facetas) %>%
+  mutate(
+    Comuna = factor(Comuna, levels = orden_facetas),
+    Tipo_Alimentacion = as.factor(Tipo_Alimentacion),
+    label_pct = ifelse(is.finite(`Porcentaje (%)`),
+                       paste0(format(round(`Porcentaje (%)`, 1), nsmall = 1), "%"),
+                       NA_character_)
+  )
+
+# Paleta Okabe–Ito (viva y segura); se recicla si hay > 8 tipos
+pal_okabe_ito <- c(
+  "#0072B2", "#D55E00", "#009E73", "#CC79A7",
+  "#F0E442", "#56B4E9", "#E69F00", "#000000"
+)
+tipos <- levels(plot_df_alltypes$Tipo_Alimentacion)
+pal_map <- setNames(rep(pal_okabe_ito, length.out = length(tipos)), tipos)
+
+# Eje X: mostrar todos los años presentes en la selección
+yrs <- sort(unique(plot_df_alltypes$Año))
+
+ggplot(
+  plot_df_alltypes,
+  aes(x = Año, y = `Porcentaje (%)`,
+      color = Tipo_Alimentacion, group = Tipo_Alimentacion)
+) +
+  geom_line(linewidth = 1.05, alpha = 0.6) +
+  geom_point(size = 2.4, alpha = 0.9) +
+  geom_text(aes(label = label_pct),
+            vjust = -0.7, size = 2.6, show.legend = FALSE,
+            check_overlap = TRUE, na.rm = TRUE) +
+  scale_color_manual(values = pal_map, name = "Tipo de lactancia") +
+  scale_x_continuous(breaks = yrs) +
+  scale_y_continuous(
+    labels = scales::percent_format(scale = 1),
+    limits = c(0, 100),
+    expand = expansion(mult = c(0.02, 0.10))
+  ) +
+  facet_wrap(~ Comuna, ncol = 5) +
+  labs(
+    title = "Evolución de los porcentajes por tipo de lactancia",
+    subtitle = "Facet: 10 comunas con menor % de LME en 2024 • Denominador por comuna-año = suma de todos los tipos",
+    x = "Año", y = "Porcentaje dentro de la comuna-año"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    legend.position = "bottom",
+    legend.box = "vertical",
+    panel.grid.minor = element_blank()
+  )
+```
+```{r}
+library(data.table); library(dplyr); library(tidyr); library(DT)
+
+# --- 1) Tabla mensual por comuna (1°, 3°, 6°) ---------------------------------
+stopifnot(exists("resumen_comuna"))
+stopifnot(exists("lut_comunas_rm"))
+
+# Unir años, quedarnos con tipos de lactancia (excluye total niños controlados)
+comunal_all <- data.table::rbindlist(resumen_comuna, use.names = TRUE, fill = TRUE)
+comunal_lact <- comunal_all[Tipo_Alimentacion != "Total Niños/as Controlados"]
+
+# Columnas de meses disponibles
+cols_meses <- intersect(c("1° mes","3° mes","6° mes"), names(comunal_lact))
+if (length(cols_meses) == 0) stop("No se encontraron columnas mensuales: '1° mes', '3° mes', '6° mes'.")
+
+# Pasar a formato largo mensual
+long_m <- data.table::melt(
+  comunal_lact,
+  id.vars = c("Año","IdComuna","CodigoPrestacion","Tipo_Alimentacion"),
+  measure.vars = cols_meses,
+  variable.name = "Mes",
+  value.name   = "TotalMes",
+  variable.factor = FALSE
+)
+
+# Asegurar tipos
+long_m[, `:=`(
+  Año = as.integer(Año),
+  IdComuna = as.character(IdComuna),
+  TotalMes = as.numeric(gsub(",", ".", as.character(TotalMes)))
+)]
+
+# Numerador robusto por (Año, IdComuna, Tipo, Mes)
+num_cmm <- long_m[
+  , .(TotalMes = sum(TotalMes, na.rm = TRUE)),
+  by = .(Año, IdComuna, Tipo_Alimentacion, Mes)
+]
+
+# Denominador por (Año, IdComuna, Mes) = suma de todos los tipos
+den_cmm <- num_cmm[
+  , .(DenomMes = sum(TotalMes, na.rm = TRUE)),
+  by = .(Año, IdComuna, Mes)
+]
+
+# Calcular % y ordenar
+tabla_comunas_meses_long <- den_cmm[num_cmm, on = c("Año","IdComuna","Mes")][
+  , `Porcentaje (%)` := ifelse(DenomMes > 0, round(100 * TotalMes / DenomMes, 2), NA_real_)
+][
+  , .(Año, IdComuna, Mes, Tipo_Alimentacion, Total = TotalMes, `Porcentaje (%)`)
+]
+
+# Agregar nombres de comuna (LUT manual RM)
+lut_comunas_rm <- lut_comunas_rm %>% mutate(IdComuna = as.character(IdComuna))
+tabla_comunas_meses_long <- tabla_comunas_meses_long %>%
+  left_join(lut_comunas_rm, by = "IdComuna") %>%
+  mutate(
+    Comuna = coalesce(Comuna, IdComuna),
+    Mes = factor(Mes, levels = c("1° mes","3° mes","6° mes"))
+  ) %>%
+  arrange(Comuna, Mes, Año, Tipo_Alimentacion) %>%
+  data.table::as.data.table()
+
+# Tabla interactiva completa (todas las comunas × meses × años × tipos)
+DT::datatable(
+  tabla_comunas_meses_long %>%
+    select(Comuna, IdComuna, Mes, Año, Tipo_Alimentacion, Total, `Porcentaje (%)`),
+  caption = "Comunas RM: Totales y porcentajes por mes (1°, 3°, 6°), año y tipo de lactancia. Denominador = suma de tipos por comuna-año-mes.",
+  extensions = c("Buttons"),
+  options = list(
+    dom = "Bfrtip",
+    buttons = c("copy","csv","excel","pdf","print"),
+    pageLength = 25,
+    scrollX = TRUE,
+    autoWidth = TRUE,
+    columnDefs = list(list(className = "dt-center", targets = "_all"))
+  )
+) %>% DT::formatRound(columns = "Porcentaje (%)", digits = 2)
+
+```
+```{r}
+#| fig-height: 20
+#| fig-width: 20
+
+# --- 2) Barras 100% apiladas con facet_wrap (10 peores LME 2024) --------------
+library(ggplot2); library(scales)
+
+# Asegurar que existe tabla_comunas_long con LME anual (para ranking 2024)
+if (!exists("tabla_comunas_long")) {
+  # Construcción mínima desde comunal_all (TOTAL anual por comuna-tipo)
+  comunal_all <- data.table::rbindlist(resumen_comuna, use.names = TRUE, fill = TRUE)
+  comunal_lact_tot <- comunal_all[
+    Tipo_Alimentacion != "Total Niños/as Controlados" & !is.na(TOTAL)
+  ][, IdComuna := as.character(IdComuna)]
+
+  num_by_comm_tot <- comunal_lact_tot[
+    , .(Total = sum(TOTAL, na.rm = TRUE)), by = .(Año, IdComuna, Tipo_Alimentacion)
+  ]
+  den_by_comm_tot <- num_by_comm_tot[
+    , .(Denom = sum(Total, na.rm = TRUE)), by = .(Año, IdComuna)
+  ]
+
+  tabla_comunas_long <- den_by_comm_tot[num_by_comm_tot, on = c("Año","IdComuna")][
+    , `Porcentaje (%)` := ifelse(Denom > 0, round(100 * Total / Denom, 2), NA_real_)
+  ][
+    , .(Año, IdComuna, Tipo_Alimentacion, Total, `Porcentaje (%)`)
+  ] %>%
+    left_join(lut_comunas_rm %>% mutate(IdComuna = as.character(IdComuna)), by = "IdComuna") %>%
+    mutate(Comuna = coalesce(Comuna, IdComuna)) %>%
+    data.table::as.data.table()
+}
+
+# Selección de las 10 comunas con menor % LME en 2024 (ranking anual)
+sel10_2024 <- tabla_comunas_long %>%
+  filter(Año == 2024,
+         Tipo_Alimentacion == "Lactancia Materna Exclusiva",
+         !is.na(`Porcentaje (%)`)) %>%
+  arrange(`Porcentaje (%)`, Total) %>%
+  slice_head(n = 10)
+
+orden_facetas <- sel10_2024 %>%
+  arrange(`Porcentaje (%)`) %>%
+  pull(Comuna)
+
+# Datos para el gráfico (mensual) solo para esas comunas
+df_plot <- tabla_comunas_meses_long %>%
+  filter(Comuna %in% orden_facetas) %>%
+  mutate(
+    Comuna = factor(Comuna, levels = orden_facetas),
+    label = ifelse(`Porcentaje (%)` >= 6,
+                   paste0(round(`Porcentaje (%)`, 1), "%"),
+                   NA_character_)
+  )
+
+# Paleta Okabe–Ito (viva y segura); se recicla si hay > 8 tipos
+pal_okabe_ito <- c("#0072B2","#D55E00","#009E73","#CC79A7",
+                   "#F0E442","#56B4E9","#E69F00","#000000")
+tipos <- levels(factor(df_plot$Tipo_Alimentacion))
+pal_map <- setNames(rep(pal_okabe_ito, length.out = length(tipos)), tipos)
+
+ggplot(
+  df_plot,
+  aes(x = Año, y = Total, fill = Tipo_Alimentacion)
+) +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.9) +
+  geom_text(aes(label = label),
+            position = position_fill(vjust = 0.5),
+            size = 2.6, color = "white", na.rm = TRUE, show.legend = FALSE) +
+  scale_fill_manual(values = pal_map, name = "Tipo de lactancia") +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  facet_wrap(~ Comuna + Mes, ncol = 5) +
+  labs(
+    title = "Composición mensual (100% apilado) por tipo de lactancia",
+    subtitle = "Facet: 10 comunas con menor % de LME en 2024 • Paneles por comuna y mes (1°, 3°, 6°)",
+    x = "Año", y = "Participación dentro de la comuna-año-mes"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
+
+```
+
+```{r}
+library(data.table); library(dplyr); library(tidyr); library(DT)
+
+# --- Construir tabla anual: Tipo de lactancia × Grupo poblacional × Año -------
+# Requiere: 'resumen_anual' creado antes (con columnas: TOTAL, Pueblos Originarios, Migrantes)
+
+anual_all <- data.table::rbindlist(resumen_anual, use.names = TRUE, fill = TRUE)
+
+stopifnot("Año" %in% names(anual_all), "TOTAL" %in% names(anual_all))
+
+# Usar solo tipos de lactancia (excluir total de niños controlados)
+lact <- anual_all[
+  Tipo_Alimentacion != "Total Niños/as Controlados" & !is.na(TOTAL)
+]
+
+# Asegurar columnas de grupos; si no existen, poner 0
+if (!("Pueblos Originarios" %in% names(lact))) lact[, `Pueblos Originarios` := 0]
+if (!("Migrantes" %in% names(lact)))          lact[, Migrantes := 0]
+
+# Convertir a numérico de forma segura
+to_num <- function(x) as.numeric(gsub(",", ".", as.character(x)))
+num_cols <- intersect(c("TOTAL", "Pueblos Originarios", "Migrantes"), names(lact))
+lact[, (num_cols) := lapply(.SD, to_num), .SDcols = num_cols]
+
+# Calcular Población General = TOTAL - (PO + Migrantes), truncando en 0
+lact[, `Población General` := pmax(
+  0,
+  TOTAL - (ifelse(is.na(`Pueblos Originarios`), 0, `Pueblos Originarios`) +
+           ifelse(is.na(Migrantes), 0, Migrantes))
+)]
+
+# Pasar a formato largo por grupo
+long_grupo <- data.table::melt(
+  lact,
+  id.vars = c("Año","CodigoPrestacion","Tipo_Alimentacion"),
+  measure.vars = c("Pueblos Originarios","Migrantes","Población General"),
+  variable.name = "Grupo", value.name = "TotalGrupo",
+  variable.factor = FALSE
+)
+
+# Denominador por (Año, Grupo): suma de todos los tipos
+den_grupo <- long_grupo[, .(DenomGrupo = sum(TotalGrupo, na.rm = TRUE)), by = .(Año, Grupo)]
+
+# Tabla final con % por (Año, Grupo, Tipo_Alimentacion)
+tabla_grupo_lact_long <- den_grupo[long_grupo, on = c("Año","Grupo")][
+  , `Porcentaje (%)` := ifelse(DenomGrupo > 0, round(100 * TotalGrupo / DenomGrupo, 2), NA_real_)
+][
+  , .(Año,
+      Grupo = factor(Grupo, levels = c("Población General","Pueblos Originarios","Migrantes")),
+      Tipo_Alimentacion,
+      Total = TotalGrupo,
+      `Porcentaje (%)`)
+][order(Grupo, Año, -`Porcentaje (%)`)]
+
+# Tabla interactiva
+DT::datatable(
+  tabla_grupo_lact_long,
+  caption = "Tipo de lactancia por grupo poblacional y año (denominador: suma de tipos dentro de cada grupo y año).",
+  extensions = c("Buttons"),
+  options = list(
+    dom = "Bfrtip",
+    buttons = c("copy","csv","excel","pdf","print"),
+    pageLength = 20,
+    scrollX = TRUE,
+    autoWidth = TRUE,
+    columnDefs = list(list(className = "dt-center", targets = "_all"))
+  )
+) %>% DT::formatRound(columns = "Porcentaje (%)", digits = 2)
+
+```
+```{r}
+# --- Gráfico: Barras 100% apiladas, facet_wrap por Grupo ----------------------
+library(ggplot2); library(scales)
+
+df_plot <- tabla_grupo_lact_long %>%
+  mutate(
+    Año = factor(Año),
+    # Etiqueta solo si el tramo es suficientemente grande (umbral 6%)
+    label = ifelse(`Porcentaje (%)` >= 6, paste0(round(`Porcentaje (%)`, 1), "%"), NA_character_)
+  )
+
+# Paleta Okabe–Ito (viva y segura); se recicla si hay > 8 tipos
+pal_okabe_ito <- c("#0072B2","#D55E00","#009E73","#CC79A7",
+                   "#F0E442","#56B4E9","#E69F00","#000000")
+tipos <- levels(factor(df_plot$Tipo_Alimentacion))
+pal_map <- setNames(rep(pal_okabe_ito, length.out = length(tipos)), tipos)
+
+ggplot(
+  df_plot,
+  aes(x = Año, y = Total, fill = Tipo_Alimentacion)
+) +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.9) +
+  geom_text(aes(label = label),
+            position = position_fill(vjust = 0.5),
+            size = 3, color = "white", na.rm = TRUE, show.legend = FALSE) +
+  scale_fill_manual(values = pal_map, name = "Tipo de lactancia") +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  facet_wrap(~ Grupo, nrow = 1) +
+  labs(
+    title = "Composición anual por tipo de lactancia y grupo poblacional",
+    subtitle = "Cada panel es un grupo (Población general, Pueblos originarios, Migrantes). Barras 100% apiladas por año.",
+    x = "Año", y = "Participación dentro del grupo y año"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
+
+```
+

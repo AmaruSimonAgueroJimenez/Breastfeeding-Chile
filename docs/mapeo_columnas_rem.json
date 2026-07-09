@@ -1,0 +1,4284 @@
+{
+ "2009": {
+  "_archivo": "DICCIONARIO_SERIE_A_2009.xls",
+  "_seccion": "REM-A03, SECCIÓN D: LACTANCIA MATERNA EN MENORES CONTROLADOS",
+  "codigos": {
+   "A0200001": {
+    "descripcion": "MENORES CONTROLADOS",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200002": {
+    "descripcion": "LACTANCIA MATERNA EXCLUSIVA",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200003": {
+    "descripcion": "LACTANCIA MATERNA MAS SÓLIDOS",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   }
+  }
+ },
+ "2010": {
+  "_archivo": "SA-2010_CODIGOS.xls",
+  "_seccion": "REM-A03 SECCIÓN E: LACTANCIA MATERNA EN MENORES CONTROLADOS",
+  "codigos": {
+   "A0200001": {
+    "descripcion": "MENORES CONTROLADOS",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200002": {
+    "descripcion": "LACTANCIA MATERNA EXCLUSIVA",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200003": {
+    "descripcion": "LACTANCIA MATERNA MAS SÓLIDOS",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   }
+  }
+ },
+ "2011": {
+  "_archivo": "SA-11_V1.5 CODIGOS.xls",
+  "_seccion": "SECCIÓN E: LACTANCIA MATERNA EN MENORES CONTROLADOS",
+  "codigos": {
+   "A0200001": {
+    "descripcion": "MENORES CONTROLADOS",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200002": {
+    "descripcion": "LACTANCIA MATERNA EXCLUSIVA",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200003": {
+    "descripcion": "LACTANCIA MATERNA MAS SÓLIDOS",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   }
+  }
+ },
+ "2012": {
+  "_archivo": "SA-12_V1.2_CODIGOS.xls",
+  "_seccion": "SECCIÓN E: LACTANCIA MATERNA EN MENORES CONTROLADOS",
+  "codigos": {
+   "A0200001": {
+    "descripcion": "MENORES CONTROLADOS",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200002": {
+    "descripcion": "LACTANCIA MATERNA EXCLUSIVA",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200003": {
+    "descripcion": "LACTANCIA MATERNA MAS SÓLIDOS",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   }
+  }
+ },
+ "2013": {
+  "_archivo": "SA-13_V1.3_CODIGOS.xls",
+  "_seccion": "SECCIÓN E: LACTANCIA MATERNA EN MENORES CONTROLADOS (REM-A03, eje \"SEGÚN CONTROL PROGRAMÁTICO\")",
+  "codigos": {
+   "A0200001": {
+    "descripcion": "LACTANCIA MATERNA MENORES CONTROLADOS (glosa de fila: MENORES CONTROLADOS — denominador)",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200002": {
+    "descripcion": "LACTANCIA MATERNA EXCLUSIVA",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200003": {
+    "descripcion": "LACTANCIA MATERNA MAS SÓLIDOS",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   }
+  }
+ },
+ "2014": {
+  "_archivo": "SA-14_V1.3_CODIGOS.xls",
+  "_seccion": "REM-A03, SECCIÓN A.7: LACTANCIA MATERNA EN MENORES CONTROLADOS",
+  "codigos": {
+   "A0200001": {
+    "descripcion": "MENORES CONTROLADOS",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ],
+     "24m": [
+      "Col05"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200002": {
+    "descripcion": "LACTANCIA MATERNA EXCLUSIVA",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ],
+     "24m": [
+      "Col05"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200003": {
+    "descripcion": "LACTANCIA MATERNA MAS SÓLIDOS",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ],
+     "24m": [
+      "Col05"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   }
+  }
+ },
+ "2015": {
+  "_archivo": "SA_15_V1.2_CODIGOS_2.xls",
+  "_seccion": "SECCIÓN A.7: LACTANCIA MATERNA EN MENORES CONTROLADOS",
+  "codigos": {
+   "A0200001": {
+    "descripcion": "MENORES CONTROLADOS",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ],
+     "24m": [
+      "Col05"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200002": {
+    "descripcion": "LACTANCIA MATERNA EXCLUSIVA",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ],
+     "24m": [
+      "Col05"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200003": {
+    "descripcion": "LACTANCIA MATERNA MAS SÓLIDOS",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ],
+     "24m": [
+      "Col05"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   }
+  }
+ },
+ "2016": {
+  "_archivo": "SA_16_V1.2-CODIGOS.xls",
+  "_seccion": "SECCIÓN A.6: LACTANCIA MATERNA EN MENORES CONTROLADOS",
+  "codigos": {
+   "A0200001": {
+    "descripcion": "MENORES CONTROLADOS",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ],
+     "24m": [
+      "Col05"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200002": {
+    "descripcion": "LACTANCIA MATERNA EXCLUSIVA",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ],
+     "24m": [
+      "Col05"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200003": {
+    "descripcion": "LACTANCIA MATERNA MAS SÓLIDOS",
+    "edad_cols": {
+     "1m": [
+      "Col01"
+     ],
+     "3m": [
+      "Col02"
+     ],
+     "6m": [
+      "Col03"
+     ],
+     "12m": [
+      "Col04"
+     ],
+     "24m": [
+      "Col05"
+     ]
+    },
+    "total_cols": [],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   }
+  }
+ },
+ "2017": {
+  "_archivo": "SA-17_V1.5_CODIGOS.xlsm",
+  "_seccion": "SECCIÓN A.5: LACTANCIA MATERNA EN MENORES CONTROLADOS",
+  "codigos": {
+   "A0200001": {
+    "descripcion": "MENORES CONTROLADOS",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "A0200002": {
+    "descripcion": "LACTANCIA MATERNA EXCLUSIVA",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "03500359": {
+    "descripcion": "LACTANCIA MATERNA / LACTANCIA ARTIFICIAL",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "03500360": {
+    "descripcion": "LACTANCIA ARTIFICIAL",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "A0200003": {
+    "descripcion": "LACTANCIA MATERNA MAS SÓLIDOS",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   }
+  }
+ },
+ "2018": {
+  "_archivo": "SA-18_V1.3_CODIGOS.xlsm",
+  "_seccion": "SECCIÓN A.5: LACTANCIA MATERNA EN MENORES CONTROLADOS (REM-A03)",
+  "codigos": {
+   "A0200001": {
+    "descripcion": "MENORES CONTROLADOS",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "A0200002": {
+    "descripcion": "LACTANCIA MATERNA EXCLUSIVA",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "03500359": {
+    "descripcion": "LACTANCIA MATERNA / LACTANCIA ARTIFICIAL",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "03500360": {
+    "descripcion": "LACTANCIA ARTIFICIAL",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "A0200003": {
+    "descripcion": "LACTANCIA MATERNA MAS SÓLIDOS",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   }
+  }
+ },
+ "2019": {
+  "_archivo": "SA_19_V1.3-CODIGOS.xlsm",
+  "_seccion": "SECCIÓN A.5: LACTANCIA MATERNA EN MENORES CONTROLADOS",
+  "codigos": {
+   "A0200001": {
+    "descripcion": "MENORES CONTROLADOS",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "A0200002": {
+    "descripcion": "LACTANCIA MATERNA EXCLUSIVA",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "03500359": {
+    "descripcion": "LACTANCIA MATERNA / FORMULA LACTEA",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "03500360": {
+    "descripcion": "FORMULA LACTEA",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "A0200003": {
+    "descripcion": "LACTANCIA MATERNA MAS SÓLIDOS",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   }
+  }
+ },
+ "2020": {
+  "_archivo": "SA_20_V1.2-CODIGOS.xlsx",
+  "_seccion": "SECCIÓN A.5: LACTANCIA MATERNA EN MENORES CONTROLADOS (REM-A03)",
+  "codigos": {
+   "A0200001": {
+    "descripcion": "MENORES CONTROLADOS",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "A0200002": {
+    "descripcion": "LACTANCIA MATERNA EXCLUSIVA",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "03500359": {
+    "descripcion": "LACTANCIA MATERNA / FORMULA LACTEA",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "03500360": {
+    "descripcion": "FORMULA LACTEA",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "A0200003": {
+    "descripcion": "LACTANCIA MATERNA MAS SÓLIDOS",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [],
+    "mig_cols": [],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   }
+  }
+ },
+ "2021": {
+  "_archivo": "SA_21_V1.2-CODIGOS.xlsm",
+  "_seccion": "SECCIÓN A.5: LACTANCIA MATERNA EN MENORES CONTROLADOS",
+  "codigos": {
+   "A0200001": {
+    "descripcion": "MENORES CONTROLADOS",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col14"
+    ],
+    "mig_cols": [
+     "Col15"
+    ],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "A0200002": {
+    "descripcion": "LACTANCIA MATERNA EXCLUSIVA",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col14"
+    ],
+    "mig_cols": [
+     "Col15"
+    ],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "03500359": {
+    "descripcion": "LACTANCIA MATERNA / FORMULA LÁCTEA",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col14"
+    ],
+    "mig_cols": [
+     "Col15"
+    ],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "03500360": {
+    "descripcion": "FORMULA LÁCTEA",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col14"
+    ],
+    "mig_cols": [
+     "Col15"
+    ],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "A0200003": {
+    "descripcion": "LACTANCIA MATERNA MAS SÓLIDOS",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col14"
+    ],
+    "mig_cols": [
+     "Col15"
+    ],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "03600140": {
+    "descripcion": "LACTANCIA MATERNA/FORMULA LÁCTEA MAS SÓLIDOS",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col14"
+    ],
+    "mig_cols": [
+     "Col15"
+    ],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "03600150": {
+    "descripcion": "FORMULA LÁCTEA MAS SÓLIDOS",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col14"
+    ],
+    "mig_cols": [
+     "Col15"
+    ],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   }
+  }
+ },
+ "2022": {
+  "_archivo": "SA_22_V1.1-CODIGOS.xlsm",
+  "_seccion": "SECCIÓN A.5: LACTANCIA MATERNA EN MENORES CONTROLADOS (REM-A03)",
+  "codigos": {
+   "A0200001": {
+    "descripcion": "MENORES CONTROLADOS",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col14"
+    ],
+    "mig_cols": [
+     "Col15"
+    ],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "A0200002": {
+    "descripcion": "LACTANCIA MATERNA EXCLUSIVA",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col14"
+    ],
+    "mig_cols": [
+     "Col15"
+    ],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "03500359": {
+    "descripcion": "LACTANCIA MATERNA / FORMULA LÁCTEA",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col14"
+    ],
+    "mig_cols": [
+     "Col15"
+    ],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "03500360": {
+    "descripcion": "FORMULA LÁCTEA",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col14"
+    ],
+    "mig_cols": [
+     "Col15"
+    ],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "A0200003": {
+    "descripcion": "LACTANCIA MATERNA MAS SÓLIDOS",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col14"
+    ],
+    "mig_cols": [
+     "Col15"
+    ],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "03600140": {
+    "descripcion": "LACTANCIA MATERNA/FORMULA LÁCTEA MAS SÓLIDOS",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col14"
+    ],
+    "mig_cols": [
+     "Col15"
+    ],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   },
+   "03600150": {
+    "descripcion": "FORMULA LÁCTEA MAS SÓLIDOS",
+    "edad_cols": {
+     "1m": [
+      "Col04",
+      "Col05"
+     ],
+     "3m": [
+      "Col06",
+      "Col07"
+     ],
+     "6m": [
+      "Col08",
+      "Col09"
+     ],
+     "12m": [
+      "Col10",
+      "Col11"
+     ],
+     "24m": [
+      "Col12",
+      "Col13"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col14"
+    ],
+    "mig_cols": [
+     "Col15"
+    ],
+    "diada_cols": {},
+    "sexo_cols": {
+     "H": {
+      "1m": [
+       "Col04"
+      ],
+      "3m": [
+       "Col06"
+      ],
+      "6m": [
+       "Col08"
+      ],
+      "12m": [
+       "Col10"
+      ],
+      "24m": [
+       "Col12"
+      ]
+     },
+     "M": {
+      "1m": [
+       "Col05"
+      ],
+      "3m": [
+       "Col07"
+      ],
+      "6m": [
+       "Col09"
+      ],
+      "12m": [
+       "Col11"
+      ],
+      "24m": [
+       "Col13"
+      ]
+     }
+    },
+    "sin_clasificar": []
+   }
+  }
+ },
+ "2023": {
+  "_archivo": "DICCIONARIO CODIGOS SA_23_V1.4.xlsm",
+  "_seccion": "SECCIÓN A.5: LACTANCIA EN NIÑOS Y NIÑAS CONTROLADOS",
+  "codigos": {
+   "A0200002": {
+    "descripcion": "LACTANCIA MATERNA EXCLUSIVA",
+    "edad_cols": {
+     "1m": [
+      "Col03"
+     ],
+     "3m": [
+      "Col04"
+     ],
+     "6m": [
+      "Col05"
+     ],
+     "12m": [
+      "Col06"
+     ],
+     "24m": [
+      "Col07"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col08"
+    ],
+    "mig_cols": [
+     "Col09"
+    ],
+    "diada_cols": {
+     "diada_11_28": [
+      "Col02"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "03500359": {
+    "descripcion": "LACTANCIA MATERNA / FORMULA LÁCTEA",
+    "edad_cols": {
+     "1m": [
+      "Col03"
+     ],
+     "3m": [
+      "Col04"
+     ],
+     "6m": [
+      "Col05"
+     ],
+     "12m": [
+      "Col06"
+     ],
+     "24m": [
+      "Col07"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col08"
+    ],
+    "mig_cols": [
+     "Col09"
+    ],
+    "diada_cols": {
+     "diada_11_28": [
+      "Col02"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "03500360": {
+    "descripcion": "FORMULA LÁCTEA",
+    "edad_cols": {
+     "1m": [
+      "Col03"
+     ],
+     "3m": [
+      "Col04"
+     ],
+     "6m": [
+      "Col05"
+     ],
+     "12m": [
+      "Col06"
+     ],
+     "24m": [
+      "Col07"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col08"
+    ],
+    "mig_cols": [
+     "Col09"
+    ],
+    "diada_cols": {
+     "diada_11_28": [
+      "Col02"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200003": {
+    "descripcion": "LACTANCIA MATERNA MAS ALIMENTACIÓN COMPLEMENTARIA",
+    "edad_cols": {
+     "1m": [
+      "Col03"
+     ],
+     "3m": [
+      "Col04"
+     ],
+     "6m": [
+      "Col05"
+     ],
+     "12m": [
+      "Col06"
+     ],
+     "24m": [
+      "Col07"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col08"
+    ],
+    "mig_cols": [
+     "Col09"
+    ],
+    "diada_cols": {
+     "diada_11_28": [
+      "Col02"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "03600140": {
+    "descripcion": "LACTANCIA MATERNA/ FÓRMULA LÁCTEA/ ALIMENTACIÓN COMPLEMENTARIA",
+    "edad_cols": {
+     "1m": [
+      "Col03"
+     ],
+     "3m": [
+      "Col04"
+     ],
+     "6m": [
+      "Col05"
+     ],
+     "12m": [
+      "Col06"
+     ],
+     "24m": [
+      "Col07"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col08"
+    ],
+    "mig_cols": [
+     "Col09"
+    ],
+    "diada_cols": {
+     "diada_11_28": [
+      "Col02"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "03600150": {
+    "descripcion": "FORMULA LÁCTEA ALIMENTACIÓN COMPLEMENTARIA",
+    "edad_cols": {
+     "1m": [
+      "Col03"
+     ],
+     "3m": [
+      "Col04"
+     ],
+     "6m": [
+      "Col05"
+     ],
+     "12m": [
+      "Col06"
+     ],
+     "24m": [
+      "Col07"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col08"
+    ],
+    "mig_cols": [
+     "Col09"
+    ],
+    "diada_cols": {
+     "diada_11_28": [
+      "Col02"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200001": {
+    "descripcion": "NÚMERO DE NIÑOS Y NIÑAS CONTROLADOS",
+    "edad_cols": {
+     "1m": [
+      "Col03"
+     ],
+     "3m": [
+      "Col04"
+     ],
+     "6m": [
+      "Col05"
+     ],
+     "12m": [
+      "Col06"
+     ],
+     "24m": [
+      "Col07"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col08"
+    ],
+    "mig_cols": [
+     "Col09"
+    ],
+    "diada_cols": {
+     "diada_11_28": [
+      "Col02"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   }
+  }
+ },
+ "2024": {
+  "_archivo": "DICCIONARIO CODIGOS SA_24_V1.1.xlsm",
+  "_seccion": "SECCIÓN A.5: LACTANCIA EN NIÑOS Y NIÑAS CONTROLADOS (REM-A03)",
+  "codigos": {
+   "A0200002": {
+    "descripcion": "Lactancia Materna exclusiva",
+    "edad_cols": {
+     "1m": [
+      "Col04"
+     ],
+     "3m": [
+      "Col05"
+     ],
+     "6m": [
+      "Col06"
+     ],
+     "12m": [
+      "Col07"
+     ],
+     "24m": [
+      "Col08"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col09"
+    ],
+    "mig_cols": [
+     "Col10"
+    ],
+    "diada_cols": {
+     "diada_0_10": [
+      "Col02"
+     ],
+     "diada_11_28": [
+      "Col03"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "03500359": {
+    "descripcion": "Lactancia Materna / Formula Láctea",
+    "edad_cols": {
+     "1m": [
+      "Col04"
+     ],
+     "3m": [
+      "Col05"
+     ],
+     "6m": [
+      "Col06"
+     ],
+     "12m": [
+      "Col07"
+     ],
+     "24m": [
+      "Col08"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col09"
+    ],
+    "mig_cols": [
+     "Col10"
+    ],
+    "diada_cols": {
+     "diada_0_10": [
+      "Col02"
+     ],
+     "diada_11_28": [
+      "Col03"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "03500360": {
+    "descripcion": "Formula Láctea",
+    "edad_cols": {
+     "1m": [
+      "Col04"
+     ],
+     "3m": [
+      "Col05"
+     ],
+     "6m": [
+      "Col06"
+     ],
+     "12m": [
+      "Col07"
+     ],
+     "24m": [
+      "Col08"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col09"
+    ],
+    "mig_cols": [
+     "Col10"
+    ],
+    "diada_cols": {
+     "diada_0_10": [
+      "Col02"
+     ],
+     "diada_11_28": [
+      "Col03"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200003": {
+    "descripcion": "Lactancia Materna más alimentación complementaria",
+    "edad_cols": {
+     "1m": [
+      "Col04"
+     ],
+     "3m": [
+      "Col05"
+     ],
+     "6m": [
+      "Col06"
+     ],
+     "12m": [
+      "Col07"
+     ],
+     "24m": [
+      "Col08"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col09"
+    ],
+    "mig_cols": [
+     "Col10"
+    ],
+    "diada_cols": {
+     "diada_0_10": [
+      "Col02"
+     ],
+     "diada_11_28": [
+      "Col03"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "03600140": {
+    "descripcion": "Lactancia Materna/ Fórmula Láctea/alimentación complementaria",
+    "edad_cols": {
+     "1m": [
+      "Col04"
+     ],
+     "3m": [
+      "Col05"
+     ],
+     "6m": [
+      "Col06"
+     ],
+     "12m": [
+      "Col07"
+     ],
+     "24m": [
+      "Col08"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col09"
+    ],
+    "mig_cols": [
+     "Col10"
+    ],
+    "diada_cols": {
+     "diada_0_10": [
+      "Col02"
+     ],
+     "diada_11_28": [
+      "Col03"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "03600150": {
+    "descripcion": "Fórmula Láctea Alimentación complementaria",
+    "edad_cols": {
+     "1m": [
+      "Col04"
+     ],
+     "3m": [
+      "Col05"
+     ],
+     "6m": [
+      "Col06"
+     ],
+     "12m": [
+      "Col07"
+     ],
+     "24m": [
+      "Col08"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col09"
+    ],
+    "mig_cols": [
+     "Col10"
+    ],
+    "diada_cols": {
+     "diada_0_10": [
+      "Col02"
+     ],
+     "diada_11_28": [
+      "Col03"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200001": {
+    "descripcion": "Número de niños y niñas controlados",
+    "edad_cols": {
+     "1m": [
+      "Col04"
+     ],
+     "3m": [
+      "Col05"
+     ],
+     "6m": [
+      "Col06"
+     ],
+     "12m": [
+      "Col07"
+     ],
+     "24m": [
+      "Col08"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col09"
+    ],
+    "mig_cols": [
+     "Col10"
+    ],
+    "diada_cols": {
+     "diada_0_10": [
+      "Col02"
+     ],
+     "diada_11_28": [
+      "Col03"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   }
+  }
+ },
+ "2025": {
+  "_archivo": "DICCIONARIO CODIGOS SA_25_V1.5.xlsm",
+  "_seccion": "SECCIÓN A.5: TIPO DE ALIMENTACIÓN NIÑOS Y NIÑAS CONTROLADOS",
+  "codigos": {
+   "A0200002": {
+    "descripcion": "Lactancia Materna exclusiva (LME)",
+    "edad_cols": {
+     "1m": [
+      "Col04"
+     ],
+     "3m": [
+      "Col05"
+     ],
+     "6m": [
+      "Col06"
+     ],
+     "12m": [
+      "Col07"
+     ],
+     "24m": [
+      "Col08"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col09"
+    ],
+    "mig_cols": [
+     "Col10"
+    ],
+    "diada_cols": {
+     "diada_0_10": [
+      "Col02"
+     ],
+     "diada_11_28": [
+      "Col03"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "03500359": {
+    "descripcion": "Lactancia Materna más Formula Láctea (LM/FL)",
+    "edad_cols": {
+     "1m": [
+      "Col04"
+     ],
+     "3m": [
+      "Col05"
+     ],
+     "6m": [
+      "Col06"
+     ],
+     "12m": [
+      "Col07"
+     ],
+     "24m": [
+      "Col08"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col09"
+    ],
+    "mig_cols": [
+     "Col10"
+    ],
+    "diada_cols": {
+     "diada_0_10": [
+      "Col02"
+     ],
+     "diada_11_28": [
+      "Col03"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "03500360": {
+    "descripcion": "Formula Láctea (FL)",
+    "edad_cols": {
+     "1m": [
+      "Col04"
+     ],
+     "3m": [
+      "Col05"
+     ],
+     "6m": [
+      "Col06"
+     ],
+     "12m": [
+      "Col07"
+     ],
+     "24m": [
+      "Col08"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col09"
+    ],
+    "mig_cols": [
+     "Col10"
+    ],
+    "diada_cols": {
+     "diada_0_10": [
+      "Col02"
+     ],
+     "diada_11_28": [
+      "Col03"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200003": {
+    "descripcion": "Lactancia Materna más Alimentación Complementaria (LM/AC)",
+    "edad_cols": {
+     "1m": [
+      "Col04"
+     ],
+     "3m": [
+      "Col05"
+     ],
+     "6m": [
+      "Col06"
+     ],
+     "12m": [
+      "Col07"
+     ],
+     "24m": [
+      "Col08"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col09"
+    ],
+    "mig_cols": [
+     "Col10"
+    ],
+    "diada_cols": {
+     "diada_0_10": [
+      "Col02"
+     ],
+     "diada_11_28": [
+      "Col03"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "03600140": {
+    "descripcion": "Lactancia Materna más Fórmula Láctea más Alimentación Complementaria (LM/FL/AC)",
+    "edad_cols": {
+     "1m": [
+      "Col04"
+     ],
+     "3m": [
+      "Col05"
+     ],
+     "6m": [
+      "Col06"
+     ],
+     "12m": [
+      "Col07"
+     ],
+     "24m": [
+      "Col08"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col09"
+    ],
+    "mig_cols": [
+     "Col10"
+    ],
+    "diada_cols": {
+     "diada_0_10": [
+      "Col02"
+     ],
+     "diada_11_28": [
+      "Col03"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "03600150": {
+    "descripcion": "Fórmula Láctea más Alimentación Complementaria (FL/AC)",
+    "edad_cols": {
+     "1m": [
+      "Col04"
+     ],
+     "3m": [
+      "Col05"
+     ],
+     "6m": [
+      "Col06"
+     ],
+     "12m": [
+      "Col07"
+     ],
+     "24m": [
+      "Col08"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col09"
+    ],
+    "mig_cols": [
+     "Col10"
+    ],
+    "diada_cols": {
+     "diada_0_10": [
+      "Col02"
+     ],
+     "diada_11_28": [
+      "Col03"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200001": {
+    "descripcion": "Total de niños y niñas controlados",
+    "edad_cols": {
+     "1m": [
+      "Col04"
+     ],
+     "3m": [
+      "Col05"
+     ],
+     "6m": [
+      "Col06"
+     ],
+     "12m": [
+      "Col07"
+     ],
+     "24m": [
+      "Col08"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col09"
+    ],
+    "mig_cols": [
+     "Col10"
+    ],
+    "diada_cols": {
+     "diada_0_10": [
+      "Col02"
+     ],
+     "diada_11_28": [
+      "Col03"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   }
+  }
+ },
+ "2026": {
+  "_archivo": "DICCIONARIO CODIGOS SA_26_V1.2.xlsm",
+  "_seccion": "SECCIÓN A.5: TIPO DE ALIMENTACIÓN NIÑOS Y NIÑAS CONTROLADOS (REM-A03)",
+  "codigos": {
+   "A0200001": {
+    "descripcion": "Total de niños y niñas controlados",
+    "edad_cols": {
+     "1m": [
+      "Col04"
+     ],
+     "3m": [
+      "Col05"
+     ],
+     "6m": [
+      "Col06"
+     ],
+     "12m": [
+      "Col07"
+     ],
+     "24m": [
+      "Col08"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col09"
+    ],
+    "mig_cols": [
+     "Col10"
+    ],
+    "diada_cols": {
+     "diada_0_10": [
+      "Col02"
+     ],
+     "diada_11_28": [
+      "Col03"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200002": {
+    "descripcion": "Lactancia Materna exclusiva (LME)",
+    "edad_cols": {
+     "1m": [
+      "Col04"
+     ],
+     "3m": [
+      "Col05"
+     ],
+     "6m": [
+      "Col06"
+     ],
+     "12m": [
+      "Col07"
+     ],
+     "24m": [
+      "Col08"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col09"
+    ],
+    "mig_cols": [
+     "Col10"
+    ],
+    "diada_cols": {
+     "diada_0_10": [
+      "Col02"
+     ],
+     "diada_11_28": [
+      "Col03"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "A0200003": {
+    "descripcion": "Lactancia Materna más Alimentación Complementaria (LM/AC)",
+    "edad_cols": {
+     "1m": [
+      "Col04"
+     ],
+     "3m": [
+      "Col05"
+     ],
+     "6m": [
+      "Col06"
+     ],
+     "12m": [
+      "Col07"
+     ],
+     "24m": [
+      "Col08"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col09"
+    ],
+    "mig_cols": [
+     "Col10"
+    ],
+    "diada_cols": {
+     "diada_0_10": [
+      "Col02"
+     ],
+     "diada_11_28": [
+      "Col03"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "03500359": {
+    "descripcion": "Lactancia Materna más Formula Láctea (LM/FL)",
+    "edad_cols": {
+     "1m": [
+      "Col04"
+     ],
+     "3m": [
+      "Col05"
+     ],
+     "6m": [
+      "Col06"
+     ],
+     "12m": [
+      "Col07"
+     ],
+     "24m": [
+      "Col08"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col09"
+    ],
+    "mig_cols": [
+     "Col10"
+    ],
+    "diada_cols": {
+     "diada_0_10": [
+      "Col02"
+     ],
+     "diada_11_28": [
+      "Col03"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "03500360": {
+    "descripcion": "Formula Láctea (FL)",
+    "edad_cols": {
+     "1m": [
+      "Col04"
+     ],
+     "3m": [
+      "Col05"
+     ],
+     "6m": [
+      "Col06"
+     ],
+     "12m": [
+      "Col07"
+     ],
+     "24m": [
+      "Col08"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col09"
+    ],
+    "mig_cols": [
+     "Col10"
+    ],
+    "diada_cols": {
+     "diada_0_10": [
+      "Col02"
+     ],
+     "diada_11_28": [
+      "Col03"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "03600140": {
+    "descripcion": "Lactancia Materna más Fórmula Láctea más Alimentación Complementaria (LM/FL/AC)",
+    "edad_cols": {
+     "1m": [
+      "Col04"
+     ],
+     "3m": [
+      "Col05"
+     ],
+     "6m": [
+      "Col06"
+     ],
+     "12m": [
+      "Col07"
+     ],
+     "24m": [
+      "Col08"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col09"
+    ],
+    "mig_cols": [
+     "Col10"
+    ],
+    "diada_cols": {
+     "diada_0_10": [
+      "Col02"
+     ],
+     "diada_11_28": [
+      "Col03"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   },
+   "03600150": {
+    "descripcion": "Fórmula Láctea más Alimentación Complementaria (FL/AC)",
+    "edad_cols": {
+     "1m": [
+      "Col04"
+     ],
+     "3m": [
+      "Col05"
+     ],
+     "6m": [
+      "Col06"
+     ],
+     "12m": [
+      "Col07"
+     ],
+     "24m": [
+      "Col08"
+     ]
+    },
+    "total_cols": [
+     "Col01"
+    ],
+    "po_cols": [
+     "Col09"
+    ],
+    "mig_cols": [
+     "Col10"
+    ],
+    "diada_cols": {
+     "diada_0_10": [
+      "Col02"
+     ],
+     "diada_11_28": [
+      "Col03"
+     ]
+    },
+    "sexo_cols": {
+     "H": {},
+     "M": {}
+    },
+    "sin_clasificar": []
+   }
+  }
+ }
+}

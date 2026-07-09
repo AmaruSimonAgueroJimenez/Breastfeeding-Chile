@@ -1,0 +1,1679 @@
+---
+title: "Etapa 4: Lactancia materna en Chile, 2009–2026 — serie nacional completa, análisis geoespacial y desigualdad territorial"
+lang: es
+author:
+  - name: "Análisis de Datos de Salud"
+date: "today"
+format:
+  html:
+    embed-resources: true
+    smooth-scroll: true
+    toc: true
+    toc-depth: 4
+    toc-location: right
+    number-sections: true
+    code-fold: true
+    theme: cosmo
+    fig-cap-location: bottom
+execute:
+  warning: false
+  message: false
+engine: jupyter
+jupyter: python3
+---
+
+[🇬🇧 English version](stage4_en.html)
+
+# Resumen
+
+Este documento analiza la **serie completa 2009–2026** de los Resúmenes Estadísticos
+Mensuales (REM-A03, sección de lactancia materna en menores controlados) del DEIS-MINSAL,
+a escala **nacional y comunal** (~77,5 millones de registros originales, agregados a un
+panel comuna×mes×año). A diferencia de las etapas anteriores (restringidas a la Región
+Metropolitana y a 2019–2024), aquí se aborda:
+
+1. **Armonización longitudinal** de 18 años de formularios REM con estructura de columnas
+   cambiante, validada contra los diccionarios oficiales de cada año y con armonización
+   territorial a la codificación comunal vigente (creación de la Región de Ñuble, 2018).
+2. **Serie temporal nacional**: tendencia, estacionalidad (STL), puntos de quiebre (PELT)
+   y análisis de series interrumpidas (ITS) del efecto de la pandemia COVID-19.
+3. **Análisis geoespacial nacional**: suavizamiento bayesiano empírico de tasas comunales,
+   autocorrelación espacial global (I de Moran con inferencia por permutaciones) y su
+   evolución 2009–2024, clústeres locales (LISA) con corrección por comparaciones
+   múltiples (FDR), y modelos de regresión espacial (rezago y error espacial).
+4. **Desigualdad territorial**: índices de Gini y Theil ponderados (con descomposición
+   entre/dentro de regiones) y convergencia sigma.
+5. **Modelos de panel** binomiales con errores agrupados por comuna, y **brechas** por
+   sexo (2017–2022) y en pueblos originarios y migrantes (2021+).
+
+**Indicador principal**: prevalencia de lactancia materna exclusiva (LME) al 6.º mes de
+control de salud — LME₆ = niños con LME al 6.º mes (código A0200002) ÷ niños
+controlados al 6.º mes (código A0200001) — disponible de forma continua en los 18 años
+de la serie. Se analizan además las demás edades de control (1.er, 3.er, 12.º y 24.º
+mes), la **lactancia materna continuada** al año y a los dos años (indicador OMS), la
+**retención** de la LME entre el 1.er y el 6.º mes, la **composición completa de tipos
+de alimentación** (2017+), las **díadas neonatales** (2023+) y las brechas por sexo,
+pueblos originarios y migrantes.
+
+# Datos y métodos
+
+## Fuente y construcción del panel
+
+Los microdatos provienen de los archivos abiertos `SerieA_{año}.csv` del DEIS
+(descargados y normalizados con `download_rem.py`). El script `etl_lactancia.py` filtra
+los códigos de prestación de la sección de lactancia del REM-A03 y agrega a nivel
+(año, mes, comuna, código), conservando las columnas crudas `Col01–Col20`. La
+correspondencia columna→significado **cambia entre años**; fue extraída de los
+diccionarios oficiales de códigos de cada año (18 archivos Excel del DEIS, validados
+contra el patrón empírico de columnas pobladas) y está registrada en
+`docs/mapeo_columnas_rem.json` (ver Anexo).
+
+Cuatro eras de formulario:
+
+| Era | Años | Estructura de la sección de lactancia |
+|---|---|---|
+| I | 2009–2013 | 4 columnas: control del 1.º, 3.º, 6.º y 12.º mes |
+| II | 2014–2016 | 5 columnas: + control del 24.º mes |
+| III | 2017–2022 | 13–15 columnas: totales y edades desagregadas por sexo; desde 2021 + pueblos originarios y migrantes |
+| IV | 2023–2026 | 9–10 columnas: total, díadas neonatales, edades, pueblos originarios, migrantes |
+
+Los denominadores son los **niños con control de salud en el mes de edad respectivo**
+(código A0200001), no cohortes poblacionales: las prevalencias se interpretan como
+proporciones entre controlados (ver Limitaciones).
+
+## Métodos estadísticos
+
+- **Intervalos de confianza**: Wilson al 95 % para proporciones.
+- **Estacionalidad y tendencia**: descomposición STL (períodos de 12 meses).
+- **Puntos de quiebre**: detección PELT (`ruptures`, modelo RBF) sobre la serie mensual
+  desestacionalizada, penalización 3·log(n), con análisis de sensibilidad.
+- **Series interrumpidas (ITS)**: regresión segmentada
+  y(t) = β₀ + β₁·t + β₂·COVID(t) + β₃·(t − t₀)·COVID(t) + armónicos estacionales + ε(t),
+  con t₀ = marzo 2020 y errores Newey–West (12 rezagos). Dado que PELT detecta un
+  quiebre estructural en 2015, la ventana pre-intervención se restringe al régimen
+  post-quiebre (enero 2015–febrero 2020), de modo que el contrafactual no extrapole
+  una pendiente promediada entre regímenes distintos. La estimación se interpreta
+  como **interrupción asociada** a la pandemia, no como efecto causal puro: en 2020
+  el denominador nacional de controles cayó ~37 %, por lo que numerador y denominador
+  se miden sobre una subpoblación seleccionada de asistentes.
+- **Suavizamiento de tasas comunales**: estimador bayesiano empírico global (método de
+  momentos de Marshall), que contrae las tasas de comunas con denominadores pequeños
+  hacia la media nacional.
+- **Pesos espaciales**: contigüidad *Queen* con tolerancia topológica (buffer de
+  250 m antes de evaluar adyacencia), necesaria porque el shapefile presenta huecos
+  de digitalización que convierten en falsas islas a comunas continentales (p. ej.,
+  Huara, Timaukel); las islas verdaderas (Isla de Pascua, Juan Fernández) se conectan
+  con su vecino más cercano (KNN-1); estandarización por filas. La matriz W se
+  reconstruye cada año con las comunas informantes, por lo que su composición varía
+  levemente entre años.
+- **Autocorrelación global**: I de Moran con inferencia por **permutaciones** (999),
+  año a año sobre tasas suavizadas. El suavizamiento EB contrae diferencialmente a
+  las comunas pequeñas (a menudo agrupadas en zonas rurales), lo que puede alterar la
+  autocorrelación; como sensibilidad se reporta el I sobre la tasa cruda y el
+  estadístico de tasas de Assunção–Reis (`Moran_Rate`).
+- **Clústeres locales**: LISA (Moran local, 9 999 permutaciones). Se reportan dos
+  criterios de significación: el convencional (p ≤ 0,05, por permutaciones) y el
+  conservador con control de la tasa de descubrimientos falsos (**FDR**) para las ~340
+  pruebas simultáneas; el contraste entre ambos se discute explícitamente.
+- **Regresión espacial** (corte transversal del último año completo): comparación de
+  MCO con diagnósticos LM, modelo de rezago espacial (ML-Lag) y de error espacial
+  (ML-Error) por máxima verosimilitud (`spreg`).
+- **Desigualdad**: Gini ponderado por denominador; Theil con descomposición
+  entre-regiones / dentro-de-regiones; razón p90/p10 ponderada.
+- **Panel**: GLM binomial (éxitos, fracasos) con efectos fijos de año y región y
+  errores estándar agrupados por comuna.
+
+Los datos de **2026 son preliminares** (año en curso) y los de **2025 están aún en
+consolidación** en el DEIS (informan ~274 de 337 comunas al momento de la descarga);
+ambos se muestran en las series descriptivas debidamente señalizados, pero **los
+modelos y la inferencia espacial usan 2009–2024**, con 2024 como corte transversal.
+
+```{python}
+#| label: setup
+#| code-summary: "Configuración, paletas y carga de datos"
+import json
+import warnings
+from pathlib import Path
+
+from IPython.display import Markdown, display
+import geopandas as gpd
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import libpysal
+import esda
+import spreg
+import ruptures as rpt
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+from matplotlib.colors import LinearSegmentedColormap, ListedColormap
+from statsmodels.stats.proportion import proportion_confint
+from statsmodels.tsa.seasonal import STL
+
+warnings.filterwarnings("ignore")
+np.random.seed(20260707)
+SEED = 20260707
+
+RAIZ = Path("..").resolve()
+DATA = RAIZ / "data"
+OUT = RAIZ / "output_files" / "stage4"
+OUT.mkdir(parents=True, exist_ok=True)
+
+# --- paleta (sistema validado; ver skill de visualización) ---
+PAL = ["#2a78d6", "#1baf7a", "#eda100", "#008300",
+       "#4a3aa7", "#e34948", "#e87ba4", "#eb6834"]   # categórica, orden fijo
+SEQ_STEPS = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5",
+             "#256abf", "#1c5cab", "#104281"]          # secuencial azul claro→oscuro
+CMAP_SEQ = LinearSegmentedColormap.from_list("seq_azul", SEQ_STEPS)
+CMAP_DIV = LinearSegmentedColormap.from_list(
+    "div_azul_rojo", ["#104281", "#3987e5", "#f0efec", "#e34948", "#8f1f1f"])
+INK, INK2, MUT, GRID = "#0b0b0b", "#52514e", "#898781", "#e1e0d9"
+COL_LISA = {"HH": "#e34948", "LL": "#2a78d6", "LH": "#9ec5f4",
+            "HL": "#f4a9a8", "ns": "#e1e0d9"}
+
+mpl.rcParams.update({
+    "font.family": "sans-serif", "font.size": 10,
+    "axes.edgecolor": MUT, "axes.labelcolor": INK2, "axes.titlecolor": INK,
+    "axes.grid": True, "grid.color": GRID, "grid.linewidth": 0.6,
+    "xtick.color": MUT, "ytick.color": MUT,
+    "axes.spines.top": False, "axes.spines.right": False,
+    "figure.dpi": 130, "savefig.dpi": 150, "figure.facecolor": "white",
+})
+
+# --- datos ---
+panel = pd.read_parquet(DATA / "procesados" / "panel_lactancia.parquet")
+mapeo = json.loads((RAIZ / "docs" / "mapeo_columnas_rem.json").read_text())
+crosswalk = json.loads((RAIZ / "docs" / "crosswalk_comunas.json").read_text())
+qc_etl = json.loads((DATA / "procesados" / "panel_lactancia_qc.json").read_text())
+
+def nota(texto):
+    """Nota renderizada como Markdown (evita salidas de texto plano)."""
+    display(Markdown(f"> {texto}"))
+
+
+# --- botones de descarga -----------------------------------------------------
+import base64
+import io as _io
+from IPython.display import HTML
+
+RECURSOS = Path("stage4_recursos")            # relativo a docs/ (junto al HTML)
+FIG600 = RECURSOS / "figuras_600dpi"
+TABLAS_DIR = RECURSOS / "tablas"
+FIG600.mkdir(parents=True, exist_ok=True)
+TABLAS_DIR.mkdir(parents=True, exist_ok=True)
+
+_BTN = ("display:inline-block;margin:4px 6px 14px 0;padding:4px 12px;"
+        "font-size:0.8rem;border:1px solid #2a78d6;border-radius:6px;"
+        "color:#2a78d6;text-decoration:none;background:#fff;")
+
+
+def boton_figura(fig, nombre, dpi=600):
+    """Guarda la figura en PNG a alta resolución y muestra un botón de descarga.
+
+    El PNG (pesado) se sirve desde stage4_recursos/ junto al HTML; el documento
+    en sí queda autocontenido.
+    """
+    ruta = FIG600 / f"{nombre}.png"
+    fig.savefig(ruta, dpi=dpi, bbox_inches="tight", facecolor="white")
+    display(HTML(
+        f'<a style="{_BTN}" href="{RECURSOS.name}/figuras_600dpi/{nombre}.png" '
+        f'download="{nombre}.png">&#8681; Descargar figura (PNG {dpi} dpi)</a>'))
+
+
+def boton_tabla(df, nombre):
+    """Muestra la tabla y un botón de descarga a Excel incrustado en el HTML."""
+    display(df)
+    buf = _io.BytesIO()
+    df_x = df.copy()
+    df_x.to_excel(buf, sheet_name=nombre[:31], engine="openpyxl")
+    (TABLAS_DIR / f"{nombre}.xlsx").write_bytes(buf.getvalue())
+    b64 = base64.b64encode(buf.getvalue()).decode()
+    display(HTML(
+        f'<a style="{_BTN}" download="{nombre}.xlsx" '
+        'href="data:application/vnd.openxmlformats-officedocument.'
+        f'spreadsheetml.sheet;base64,{b64}">&#8681; Descargar tabla (Excel)</a>'))
+
+shp = gpd.read_file(DATA / "comunas.shp")
+shp["IdComuna"] = shp["cod_comuna"].astype(int).map(lambda c: f"{c:05d}")
+shp = shp[shp["codregion"].between(1, 16)].copy()
+
+# armonización territorial: códigos antiguos -> codificación vigente
+panel = panel.dropna(subset=["IdComuna"]).copy()
+panel = panel[panel["IdComuna"] != ""]
+panel["IdComuna"] = panel["IdComuna"].replace(crosswalk)
+panel["region"] = panel["IdComuna"].str[:2].astype(int)
+
+NOMBRES_REGION = {
+    1: "Tarapacá", 2: "Antofagasta", 3: "Atacama", 4: "Coquimbo",
+    5: "Valparaíso", 6: "O'Higgins", 7: "Maule", 8: "Biobío",
+    9: "La Araucanía", 10: "Los Lagos", 11: "Aysén", 12: "Magallanes",
+    13: "Metropolitana", 14: "Los Ríos", 15: "Arica y Parinacota", 16: "Ñuble",
+}
+COD_DEN, COD_LME, COD_LMC = "A0200001", "A0200002", "A0200003"
+EDADES = ["1m", "3m", "6m", "12m", "24m"]
+ETIQ_EDAD = {"1m": "1.er mes", "3m": "3.er mes", "6m": "6.º mes",
+             "12m": "12.º mes", "24m": "24.º mes"}
+ULTIMO_COMPLETO = 2024   # último año con cobertura comunal completa y datos consolidados
+                         # (2025 aún en consolidación en DEIS: ~274/337 comunas; 2026 preliminar)
+
+nota(f"**Panel de entrada**: {len(panel):,} filas | comunas vigentes: "
+     f"{panel['IdComuna'].nunique()} | shapefile: {len(shp)} comunas.")
+```
+
+```{python}
+#| label: armonizacion
+#| code-summary: "Armonización: columnas crudas → indicadores por edad de control"
+def sumar_cols(df, cols):
+    presentes = [c for c in cols if c in df.columns]
+    return df[presentes].sum(axis=1) if presentes else pd.Series(0.0, index=df.index)
+
+registros = []
+for anio_str, info in mapeo.items():
+    anio = int(anio_str)
+    sub = panel[panel["Ano"] == anio]
+    if sub.empty:
+        continue
+    for codigo, cfg in info["codigos"].items():
+        s = sub[sub["CodigoPrestacion"] == codigo]
+        if s.empty:
+            continue
+        base = s[["Ano", "Mes", "IdComuna", "region", "n_establecimientos"]].copy()
+        for edad, cols in cfg["edad_cols"].items():
+            base[edad] = sumar_cols(s, cols)
+        for extra, key in [("po_cols", "po"), ("mig_cols", "mig"), ("total_cols", "total")]:
+            if cfg.get(extra):
+                base[key] = sumar_cols(s, cfg[extra])
+        # díadas neonatales (era IV): ≤10 días y 11–28 días de vida
+        for dkey, dcols in cfg.get("diada_cols", {}).items():
+            base[dkey] = sumar_cols(s, dcols)
+        # sexo (era III)
+        for sexo in ("H", "M"):
+            for edad, cols in cfg.get("sexo_cols", {}).get(sexo, {}).items():
+                base[f"{edad}_{sexo}"] = sumar_cols(s, cols)
+        base["codigo"] = codigo
+        registros.append(base)
+
+arm = pd.concat(registros, ignore_index=True)
+
+def tabla_indicador(codigo, columnas):
+    """Suma anual (o mensual) por comuna para un código y columnas dadas."""
+    t = arm[arm["codigo"] == codigo]
+    return t.groupby(["Ano", "Mes", "IdComuna", "region"])[columnas].sum().reset_index()
+
+cols_num = [c for c in arm.columns if c not in
+            ("Ano", "Mes", "IdComuna", "region", "codigo", "n_establecimientos")]
+den = tabla_indicador(COD_DEN, cols_num).rename(columns={c: f"den_{c}" for c in cols_num})
+num = tabla_indicador(COD_LME, cols_num).rename(columns={c: f"lme_{c}" for c in cols_num})
+lmc = tabla_indicador(COD_LMC, cols_num).rename(columns={c: f"lmc_{c}" for c in cols_num})
+
+cm = (den.merge(num, on=["Ano", "Mes", "IdComuna", "region"], how="outer")
+         .merge(lmc, on=["Ano", "Mes", "IdComuna", "region"], how="outer")
+         .fillna(0.0))
+
+# QC de consistencia: el numerador no puede exceder al denominador. En los datos
+# crudos existen violaciones aisladas (errores de digitación de establecimientos);
+# se truncan al denominador (num := min(num, den)) y se reporta la magnitud.
+recortes = 0
+for c in cols_num:
+    denc = f"den_{c}"
+    for pref in ("lme", "lmc"):
+        col = f"{pref}_{c}"
+        if col in cm.columns:
+            exceso = cm[col] > cm[denc]
+            recortes += int(exceso.sum())
+            cm.loc[exceso, col] = cm.loc[exceso, denc]
+nota(f"**Panel armonizado comuna-mes**: {len(cm):,} filas, "
+     f"{cm['IdComuna'].nunique()} comunas, {cm['Ano'].min()}–{cm['Ano'].max()}. "
+     f"Celdas comuna-mes truncadas por numerador > denominador: **{recortes:,}** "
+     f"(error de registro en origen; ver Limitaciones).")
+```
+
+## Control de calidad y cobertura {#sec-qc}
+
+```{python}
+#| label: qc
+#| code-summary: "Cobertura del panel por año"
+#| tbl-cap: "Cobertura de la serie: comunas informantes, controles al 6.º mes y meses disponibles"
+qc = (cm.groupby("Ano")
+        .agg(comunas=("IdComuna", "nunique"),
+             meses=("Mes", "nunique"),
+             controles_6m=("den_6m", "sum"),
+             lme_6m=("lme_6m", "sum"))
+        .assign(prev_lme6=lambda d: 100 * d["lme_6m"] / d["controles_6m"])
+        .round(1))
+qc["nota"] = ""
+qc.loc[2025, "nota"] = "en consolidación (cobertura comunal parcial)"
+qc.loc[2026, "nota"] = "preliminar (año en curso)"
+qc.columns = ["Comunas", "Meses", "Controles 6.º mes", "LME 6.º mes", "LME₆ (%)", "Nota"]
+boton_tabla(qc, "cobertura_anual")
+```
+
+La cobertura comunal es de ~302 comunas informantes en 2009 y se estabiliza en
+~337–341 desde 2010 **hasta 2024**; en 2025 cae la cantidad de comunas informantes
+porque el DEIS aún consolida ese año, y 2026 es preliminar. Por ello la inferencia se
+restringe a 2009–2024 (y el modelo de panel usa 2010 como año de referencia, primer
+año de cobertura completa). Adicionalmente, un pequeño número de celdas comuna-mes
+presenta numeradores mayores que su denominador (error de registro en origen); esas
+celdas se truncan al denominador y su recuento se reporta en el chunk de
+armonización.
+
+# Serie nacional 2009–2026
+
+## Prevalencia anual por edad de control
+
+```{python}
+#| label: fig-nacional-anual
+#| code-summary: "Serie nacional anual con IC de Wilson"
+#| fig-cap: "Prevalencia nacional de lactancia materna exclusiva según edad de control, 2009–2026. Bandas: IC 95 % de Wilson (imperceptibles por el tamaño muestral). Zona sombreada: 2025 (en consolidación) y 2026 (preliminar). Se omiten el 12.º y 24.º mes, donde la LME es ≈0 por definición (la alimentación complementaria comienza a los 6 meses)."
+nac = cm.groupby("Ano")[[f"lme_{e}" for e in EDADES] + [f"den_{e}" for e in EDADES]].sum()
+EDADES_FIG = ["1m", "3m", "6m"]  # 12m/24m: LME ≈ 0 por definición
+
+fig, ax = plt.subplots(figsize=(9.5, 5.2))
+ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+for i, e in enumerate(EDADES_FIG):
+    n, d = nac[f"lme_{e}"], nac[f"den_{e}"]
+    validos = d > 0
+    p = 100 * n[validos] / d[validos]
+    lo, hi = proportion_confint(n[validos], d[validos], method="wilson")
+    ax.plot(p.index, p.values, color=PAL[i], lw=2, marker="o", ms=4,
+            label=ETIQ_EDAD[e])
+    ax.fill_between(p.index, 100 * lo, 100 * hi, color=PAL[i], alpha=0.15, lw=0)
+    ax.annotate(ETIQ_EDAD[e], (p.index[-1], p.values[-1]),
+                xytext=(6, 0), textcoords="offset points",
+                color=PAL[i], fontsize=9, va="center")
+ax.axvspan(2024.5, 2026.5, color=GRID, alpha=0.35, zorder=0)
+ax.set_xlim(2008.5, 2027.6)
+ax.set_ylabel("LME (% de niños controlados)")
+ax.set_xlabel("Año")
+ax.set_title("Lactancia materna exclusiva en Chile por edad de control, 2009–2026")
+ax.legend(loc="upper right", frameon=False, ncols=2)
+plt.tight_layout()
+nac_pct = pd.DataFrame({e: 100 * nac[f"lme_{e}"] / nac[f"den_{e}"].replace(0, np.nan)
+                        for e in EDADES}).round(2)
+nac_pct.to_csv(OUT / "lme_nacional_anual.csv")
+plt.show()
+boton_figura(fig, "nacional_anual")
+```
+
+## Lactancia materna continuada al año y a los dos años (aproximación al indicador OMS)
+
+La LME solo es un objetivo hasta el 6.º mes; a partir de entonces el indicador de
+referencia de la OMS es la **lactancia materna continuada** junto a la alimentación
+complementaria. Se define aquí como (A0200002 + A0200003) ÷ A0200001 en el control del
+12.º mes (serie completa) y del 24.º mes (disponible desde 2014). Esta definición
+excluye a los niños con lactancia mixta con fórmula y es por tanto una **cota
+inferior**, pero **no es comparable a través de 2021**: ese año el formulario creó la
+categoría LM + fórmula + complementaria (03600140) y parte de los niños antes anotados
+en A0200003 migró a ella — la caída post-2021 de la serie «sin fórmula» es en gran
+medida re-codificación, como lo demuestra la estabilidad de la versión **ampliada**
+(que incorpora los códigos con fórmula, disponible desde 2021). La medida se calcula
+sobre niños controlados del sistema público, por lo que es una aproximación al
+indicador OMS, no una estimación poblacional.
+
+```{python}
+#| label: fig-continuada
+#| code-summary: "Lactancia continuada al 12.º y 24.º mes"
+#| fig-cap: "Lactancia materna continuada (sin fórmula) al 12.º mes (2009–2026) y al 24.º mes (2014–2026), y versión ampliada con códigos de lactancia mixta (2021+). Las series «sin fórmula» NO son comparables a través de 2021 (línea punteada): la creación de la categoría LM+fórmula+complementaria re-codificó parte de A0200003. Zona sombreada: 2025 en consolidación y 2026 preliminar."
+lc = cm.groupby("Ano")[["lme_12m", "lmc_12m", "den_12m",
+                        "lme_24m", "lmc_24m", "den_24m"]].sum()
+lc12 = 100 * (lc["lme_12m"] + lc["lmc_12m"]) / lc["den_12m"]
+lc24 = (100 * (lc["lme_24m"] + lc["lmc_24m"])
+        / lc["den_24m"].replace(0, np.nan)).dropna()
+
+# versión ampliada 2021+: incluye LM/fórmula (03500359) y LM/fórmula/sólidos (03600140)
+mix = {}
+for cod in ("03500359", "03600140"):
+    t = arm[arm["codigo"] == cod].groupby("Ano")[["12m"]].sum()
+    mix[cod] = t["12m"]
+mix_df = pd.DataFrame(mix).reindex(lc.index).fillna(0)
+lc12_amp = (100 * (lc["lme_12m"] + lc["lmc_12m"] + mix_df.sum(axis=1))
+            / lc["den_12m"]).loc[2021:]
+
+fig, ax = plt.subplots(figsize=(9.5, 4.8))
+ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+ax.plot(lc12.index, lc12.values, color=PAL[0], lw=2, marker="o", ms=4,
+        label="12.º mes (sin fórmula)")
+ax.plot(lc24.index, lc24.values, color=PAL[1], lw=2, marker="s", ms=4,
+        label="24.º mes (sin fórmula)")
+ax.plot(lc12_amp.index, lc12_amp.values, color=PAL[0], lw=1.6, ls="--", marker="o",
+        ms=3, label="12.º mes (incl. mixta, 2021+)")
+ax.axvline(2021, color=INK2, lw=1, ls=":")
+ax.annotate("cambio de formulario", (2021, ax.get_ylim()[1] * 0.97), color=INK2,
+            fontsize=8, ha="center", va="top")
+ax.axvspan(2024.5, 2026.5, color=GRID, alpha=0.35, zorder=0)
+ax.set_ylabel("Lactancia continuada (% de controlados)")
+ax.set_xlabel("Año")
+ax.set_title("Lactancia materna continuada al año y a los dos años, 2009–2026")
+ax.legend(frameon=False)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "continuada")
+pd.DataFrame({"LC_12m": lc12, "LC_24m": lc24, "LC_12m_ampliada": lc12_amp}
+             ).round(2).to_csv(OUT / "lactancia_continuada_nacional.csv")
+```
+
+## Retención de la LME entre el 1.er y el 6.º mes
+
+```{python}
+#| label: fig-retencion
+#| code-summary: "Retención nacional LME 1.er → 6.º mes"
+#| fig-cap: "Retención de la LME: razón entre la prevalencia al 3.er/6.º mes y la del 1.er mes, por año. Un valor de 0,8 al 6.º mes indica que se conserva el 80 % de la prevalencia inicial. Zona sombreada: años provisionales."
+ret_nac = pd.DataFrame({
+    e: 100 * nac[f"lme_{e}"] / nac[f"den_{e}"] for e in ("1m", "3m", "6m")})
+ret_nac["ret_6_1"] = ret_nac["6m"] / ret_nac["1m"]
+ret_nac["ret_3_1"] = ret_nac["3m"] / ret_nac["1m"]
+
+fig, ax = plt.subplots(figsize=(9.5, 4.4))
+ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+ax.plot(ret_nac.index, ret_nac["ret_3_1"], color=PAL[1], lw=2, marker="s", ms=4,
+        label="3.er/1.er mes")
+ax.plot(ret_nac.index, ret_nac["ret_6_1"], color=PAL[0], lw=2, marker="o", ms=4,
+        label="6.º/1.er mes")
+ax.axvspan(2024.5, 2026.5, color=GRID, alpha=0.35, zorder=0)
+ax.set_ylabel("Razón de retención de la LME")
+ax.set_xlabel("Año")
+ax.set_title("Retención de la LME a lo largo de los controles, 2009–2026")
+ax.legend(frameon=False)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "retencion")
+nota(f"La razón 6.º/1.er mes compara **niños distintos** en cada control (cohorte "
+     "sintética, no seguimiento individual). Pasó de "
+     f"{ret_nac['ret_6_1'].loc[2009]:.2f} (2009) a "
+     f"{ret_nac['ret_6_1'].loc[2019]:.2f} (2019) y "
+     f"{ret_nac['ret_6_1'].loc[ULTIMO_COMPLETO]:.2f} ({ULTIMO_COMPLETO}). El salto se "
+     "concentra en el quiebre de registro de 2015, por lo que parte del aumento es "
+     "atribuible al cambio de formulario y no solo a mejor mantención. Tras 2019 la "
+     "retención se mantiene alta mientras el **nivel inicial** (LME al 1.er mes) "
+     "sigue descendiendo: el problema reciente está en el inicio de la LME, no en su "
+     "mantención.")
+```
+
+## Estacionalidad, tendencia y puntos de quiebre
+
+```{python}
+#| label: fig-stl
+#| code-summary: "Serie mensual LME al 6.º mes: STL y quiebres estructurales (PELT)"
+#| fig-cap: "Serie mensual nacional de LME al 6.º mes: descomposición STL (tendencia y estacionalidad) y puntos de quiebre detectados por PELT sobre la serie desestacionalizada (líneas verticales). Serie 2009–2024 (2025 en consolidación y 2026 preliminar se excluyen)."
+mens = (cm[cm["Ano"] <= ULTIMO_COMPLETO]
+        .groupby(["Ano", "Mes"])[["lme_6m", "den_6m"]].sum().reset_index())
+mens["fecha"] = pd.to_datetime(dict(year=mens["Ano"], month=mens["Mes"], day=1))
+mens = mens.set_index("fecha").sort_index()
+mens["p6"] = 100 * mens["lme_6m"] / mens["den_6m"]
+
+stl = STL(mens["p6"], period=12, robust=True).fit()
+desest = mens["p6"] - stl.seasonal
+
+# PELT con jump=1 (resolución mensual); el quiebre se fecha en el PRIMER mes del
+# nuevo régimen. Sensibilidad a la penalización: se reportan pen = k·log(n), k=1..3.
+algo = rpt.Pelt(model="rbf", jump=1).fit(desest.values.reshape(-1, 1))
+sens_pen = {}
+for k in (1, 2, 3):
+    b = algo.predict(pen=k * np.log(len(desest)))
+    sens_pen[k] = [desest.index[i].strftime("%Y-%m") for i in b[:-1]]
+bkps = algo.predict(pen=3 * np.log(len(desest)))
+fechas_quiebre = [desest.index[i] for i in bkps[:-1]]
+
+fig, axes = plt.subplots(3, 1, figsize=(9.5, 7.5), sharex=True,
+                         gridspec_kw={"height_ratios": [2, 1, 1]})
+axes[0].plot(mens.index, mens["p6"], color=GRID, lw=1, label="Observada")
+axes[0].plot(stl.trend.index, stl.trend, color=PAL[0], lw=2.2, label="Tendencia STL")
+for f in fechas_quiebre:
+    axes[0].axvline(f, color=PAL[5], lw=1.2, ls="--")
+    axes[0].annotate(f.strftime("%Y-%m"), (f, axes[0].get_ylim()[1]),
+                     xytext=(3, -12), textcoords="offset points",
+                     color=PAL[5], fontsize=8)
+axes[0].set_ylabel("LME₆ (%)")
+axes[0].legend(frameon=False, loc="lower left")
+axes[0].set_title("LME al 6.º mes: serie mensual, tendencia y quiebres estructurales")
+axes[1].plot(stl.seasonal.index, stl.seasonal, color=PAL[1], lw=1.2)
+axes[1].set_ylabel("Estacional")
+axes[2].plot(stl.resid.index, stl.resid, color=MUT, lw=0.8)
+axes[2].set_ylabel("Resto")
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "stl")
+sens_txt = "; ".join(f"pen = {k}·log(n): {', '.join(v) if v else 'ninguno'}"
+                     for k, v in sens_pen.items())
+nota(f"**Quiebres detectados** (pen = 3·log n): "
+     f"{', '.join(f.strftime('%Y-%m') for f in fechas_quiebre)}. "
+     f"Sensibilidad — {sens_txt}. El quiebre de 2015 es robusto a la penalización; "
+     f"los de 2017 y fines de 2020 solo aparecen con la penalización más laxa.")
+```
+
+## Efecto de la pandemia: análisis de series interrumpidas
+
+```{python}
+#| label: its
+#| code-summary: "ITS con errores Newey–West"
+# ventana: régimen post-quiebre estructural (2015-01) hasta 2024-12
+its = mens.loc["2015-01-01":].reset_index().copy()
+its["t"] = np.arange(len(its))
+t0 = int(its.index[its["fecha"] == "2020-03-01"][0])
+its["covid"] = (its["t"] >= t0).astype(int)
+its["t_post"] = (its["t"] - t0).clip(lower=0)
+for k in (1, 2):
+    its[f"sin{k}"] = np.sin(2 * np.pi * k * its["t"] / 12)
+    its[f"cos{k}"] = np.cos(2 * np.pi * k * its["t"] / 12)
+
+X = sm.add_constant(its[["t", "covid", "t_post", "sin1", "cos1", "sin2", "cos2"]])
+mod_its = sm.OLS(its["p6"], X).fit(cov_type="HAC", cov_kwds={"maxlags": 12})
+
+res_its = pd.DataFrame({
+    "Coeficiente": mod_its.params, "EE (NW)": mod_its.bse,
+    "IC 2.5 %": mod_its.conf_int()[0], "IC 97.5 %": mod_its.conf_int()[1],
+    "p": mod_its.pvalues,
+}).loc[["const", "t", "covid", "t_post"]].round(3)
+res_its.index = ["Nivel basal (%)", "Tendencia pre 2015–feb2020 (pp/mes)",
+                 "Cambio de nivel COVID (pp)", "Cambio de pendiente COVID (pp/mes)"]
+boton_tabla(res_its, "its_lme6")
+```
+
+```{python}
+#| label: fig-its
+#| code-summary: "Observado vs. contrafactual"
+#| fig-cap: "Análisis de series interrumpidas sobre el régimen post-quiebre (enero 2015–diciembre 2024): LME al 6.º mes observada y contrafactual (proyección del régimen enero 2015–febrero 2020). Errores Newey–West (12 rezagos). El contrafactual es una extrapolación lineal y debe leerse con cautela creciente a mayor horizonte."
+X_cf = X.copy()
+X_cf[["covid", "t_post"]] = 0
+pred_cf = mod_its.predict(X_cf)
+pred_obs = mod_its.predict(X)
+
+fig, ax = plt.subplots(figsize=(9.5, 4.8))
+ax.plot(its["fecha"], its["p6"], color=GRID, lw=1, label="Observada")
+ax.plot(its["fecha"], pred_obs, color=PAL[0], lw=2, label="Ajuste ITS")
+ax.plot(its["fecha"][t0:], pred_cf[t0:], color=PAL[5], lw=2, ls="--",
+        label="Contrafactual sin COVID")
+ax.axvline(its["fecha"][t0], color=MUT, lw=1, ls=":")
+ax.annotate("mar-2020", (its["fecha"][t0], ax.get_ylim()[0]),
+            xytext=(4, 6), textcoords="offset points", color=MUT, fontsize=9)
+ax.set_ylabel("LME₆ (%)")
+ax.legend(frameon=False, loc="lower left")
+ax.set_title("Impacto de la pandemia sobre la LME al 6.º mes (ITS)")
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "its")
+
+efecto_24m = (pred_obs - pred_cf).iloc[t0 + 24] if t0 + 24 < len(its) else np.nan
+nota(f"**Brecha estimada a 24 meses** del inicio de la pandemia: **{efecto_24m:+.1f} pp**. "
+     "Se trata de una *interrupción asociada* a la pandemia, no interpretable como "
+     "efecto causal puro: el denominador de controles cayó ~37 % en 2020 "
+     "(selección de la subpoblación asistente).")
+```
+
+## Efecto de la pandemia por edad de control
+
+```{python}
+#| label: its-edades
+#| code-summary: "ITS replicado para el 1.er, 3.er y 6.º mes"
+#| tbl-cap: "Análisis de series interrumpidas por edad de control (régimen base enero 2015–febrero 2020, errores Newey–West): cambio de nivel y de pendiente asociados a la pandemia, y brecha respecto del contrafactual a 24 meses."
+def its_por_edad(edad):
+    m = (cm[cm["Ano"] <= ULTIMO_COMPLETO]
+         .groupby(["Ano", "Mes"])[[f"lme_{edad}", f"den_{edad}"]].sum().reset_index())
+    m["fecha"] = pd.to_datetime(dict(year=m["Ano"], month=m["Mes"], day=1))
+    m = m.set_index("fecha").sort_index().loc["2015-01-01":]
+    m["p"] = 100 * m[f"lme_{edad}"] / m[f"den_{edad}"]
+    m = m.reset_index()
+    m["t"] = np.arange(len(m))
+    t0e = int(m.index[m["fecha"] == "2020-03-01"][0])
+    m["covid"] = (m["t"] >= t0e).astype(int)
+    m["t_post"] = (m["t"] - t0e).clip(lower=0)
+    for k in (1, 2):
+        m[f"sin{k}"] = np.sin(2 * np.pi * k * m["t"] / 12)
+        m[f"cos{k}"] = np.cos(2 * np.pi * k * m["t"] / 12)
+    Xe = sm.add_constant(m[["t", "covid", "t_post", "sin1", "cos1", "sin2", "cos2"]])
+    me = sm.OLS(m["p"], Xe).fit(cov_type="HAC", cov_kwds={"maxlags": 12})
+    Xcf = Xe.copy(); Xcf[["covid", "t_post"]] = 0
+    pred_cf24 = me.predict(Xcf).iloc[t0e + 24]
+    brecha = (me.predict(Xe) - me.predict(Xcf)).iloc[t0e + 24]
+    ci_e = me.conf_int()
+    return {
+        "Edad": ETIQ_EDAD[edad],
+        "Nivel COVID (pp)": me.params["covid"],
+        "IC nivel": f"[{ci_e.loc['covid', 0]:.1f}; {ci_e.loc['covid', 1]:.1f}]",
+        "Pendiente COVID (pp/mes)": me.params["t_post"],
+        "IC pendiente": f"[{ci_e.loc['t_post', 0]:.3f}; {ci_e.loc['t_post', 1]:.3f}]",
+        "Brecha a 24 meses (pp)": brecha,
+        "Brecha relativa (%)": 100 * brecha / pred_cf24,
+    }
+
+its_tab = pd.DataFrame([its_por_edad(e) for e in ("1m", "3m", "6m")]).set_index("Edad")
+boton_tabla(its_tab.round(2), "its_por_edad")
+```
+
+La interrupción pandémica no fue homogénea por edad: la tabla permite comparar si el
+golpe se concentró en el inicio de la lactancia (1.er mes, más ligado a la atención
+perinatal) o en su mantención (6.º mes, más ligado al acompañamiento ambulatorio).
+La comparación entre edades debe leerse con cautela: los niveles basales y la
+magnitud de la caída de denominadores en 2020 difieren por edad (selección de
+asistentes distinta), por lo que la **brecha relativa** al contrafactual es la
+columna más comparable.
+
+# Trayectorias regionales y convergencia
+
+```{python}
+#| label: fig-regiones
+#| code-summary: "Pequeños múltiplos regionales"
+#| fig-cap: "LME al 6.º mes por región, 2009–2024 (línea azul), con la trayectoria nacional de referencia (gris). Codificación territorial armonizada a 16 regiones."
+reg = (cm[cm["Ano"] <= ULTIMO_COMPLETO]
+       .groupby(["Ano", "region"])[["lme_6m", "den_6m"]].sum().reset_index())
+reg["p6"] = 100 * reg["lme_6m"] / reg["den_6m"]
+nac_serie = (cm[cm["Ano"] <= ULTIMO_COMPLETO]
+             .groupby("Ano")[["lme_6m", "den_6m"]].sum())
+nac_serie = 100 * nac_serie["lme_6m"] / nac_serie["den_6m"]
+
+orden_reg = [15, 1, 2, 3, 4, 5, 13, 6, 7, 16, 8, 9, 14, 10, 11, 12]  # norte→sur
+fig, axes = plt.subplots(4, 4, figsize=(11, 9), sharex=True, sharey=True)
+for ax, r in zip(axes.flat, orden_reg):
+    s = reg[reg["region"] == r]
+    ax.plot(nac_serie.index, nac_serie.values, color=GRID, lw=1.4)
+    ax.plot(s["Ano"], s["p6"], color=PAL[0], lw=1.8)
+    ax.set_title(NOMBRES_REGION[r], fontsize=9.5, color=INK)
+    ax.grid(True, lw=0.4)
+fig.supylabel("LME₆ (%)", color=INK2)
+fig.suptitle("Trayectorias regionales de la LME al 6.º mes, 2009–2024 (orden norte→sur)", y=0.995)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "regiones")
+```
+
+```{python}
+#| label: fig-convergencia
+#| code-summary: "Convergencia sigma entre comunas y regiones"
+#| fig-cap: "Convergencia sigma: dispersión interanual de la LME al 6.º mes entre regiones (DE simple) y entre comunas (DE ponderada por denominador). Una pendiente negativa indica convergencia territorial."
+def de_ponderada(x, w):
+    m = np.average(x, weights=w)
+    return np.sqrt(np.average((x - m) ** 2, weights=w))
+
+com_anual = cm.groupby(["Ano", "IdComuna"])[["lme_6m", "den_6m"]].sum().reset_index()
+com_anual = com_anual[(com_anual["den_6m"] >= 30) & (com_anual["Ano"] <= ULTIMO_COMPLETO)]
+com_anual["p6"] = 100 * com_anual["lme_6m"] / com_anual["den_6m"]
+
+sigma_com = com_anual.groupby("Ano").apply(
+    lambda d: de_ponderada(d["p6"], d["den_6m"]), include_groups=False)
+sigma_reg = reg.groupby("Ano").apply(
+    lambda d: d["p6"].std(), include_groups=False)
+
+fig, ax = plt.subplots(figsize=(9, 4.2))
+ax.plot(sigma_com.index, sigma_com.values, color=PAL[0], lw=2, marker="o", ms=4,
+        label="Entre comunas (ponderada)")
+ax.plot(sigma_reg.index, sigma_reg.values, color=PAL[1], lw=2, marker="s", ms=4,
+        label="Entre regiones")
+ax.set_ylabel("Desviación estándar de LME₆ (pp)")
+ax.set_xlabel("Año")
+ax.set_title("Convergencia sigma de la LME al 6.º mes, 2009–2024")
+ax.legend(frameon=False)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "convergencia")
+```
+
+# Análisis geoespacial nacional
+
+## Tasas comunales y suavizamiento bayesiano empírico
+
+```{python}
+#| label: eb
+#| code-summary: "Suavizamiento bayesiano empírico (Marshall) y unión con la geometría"
+def eb_suavizar(num, den):
+    """Estimador EB global (método de momentos de Marshall) para proporciones."""
+    num, den = np.asarray(num, float), np.asarray(den, float)
+    p = num / den
+    m = num.sum() / den.sum()
+    s2 = np.average((p - m) ** 2, weights=den)
+    a = max(s2 - m * (1 - m) / (den.mean()), 0.0)
+    w = a / (a + m * (1 - m) / den) if a > 0 else np.zeros_like(den)
+    return w * p + (1 - w) * m
+
+def comunal_anual(anio, edad="6m"):
+    d = cm[cm["Ano"] == anio].groupby("IdComuna")[[f"lme_{edad}", f"den_{edad}"]].sum()
+    d.columns = ["lme_6m", "den_6m"]  # nombres canónicos para el resto del pipeline
+    d = d[d["den_6m"] > 0]
+    d["p6"] = 100 * d["lme_6m"] / d["den_6m"]
+    d["p6_eb"] = 100 * eb_suavizar(d["lme_6m"], d["den_6m"])
+    return d.reset_index()
+
+com25 = comunal_anual(ULTIMO_COMPLETO)
+gdf = shp.merge(com25, on="IdComuna", how="left")
+nota(f"**{ULTIMO_COMPLETO}**: {com25.shape[0]} comunas con datos; "
+     f"{gdf['p6'].isna().sum()} comunas del shapefile sin datos.")
+gdf_datos = gdf.dropna(subset=["p6_eb"]).reset_index(drop=True)
+```
+
+```{python}
+#| label: fig-mapa-nacional
+#| code-summary: "Mapa coroplético nacional + Región Metropolitana"
+#| fig-cap: "LME al 6.º mes por comuna (tasas suavizadas por bayes empírico), 2024. Clasificación Fisher–Jenks (6 clases), rampa secuencial de un solo tono. Panel derecho: Región Metropolitana."
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.5, 10),
+                               gridspec_kw={"width_ratios": [1, 1.35]})
+gdf.plot(ax=ax1, column="p6_eb", cmap=CMAP_SEQ, scheme="fisherjenks", k=6,
+         edgecolor="white", linewidth=0.15,
+         missing_kwds={"color": GRID, "label": "Sin datos"},
+         legend=True,
+         legend_kwds={"title": "LME₆ (%) EB", "loc": "center left",
+                      "fontsize": 8, "title_fontsize": 9, "frameon": False})
+ax1.set_axis_off()
+ax1.set_title(f"Chile — LME al 6.º mes, {ULTIMO_COMPLETO}", fontsize=11)
+
+rm = gdf[gdf["codregion"] == 13]
+rm.plot(ax=ax2, column="p6_eb", cmap=CMAP_SEQ, scheme="fisherjenks", k=6,
+        edgecolor="white", linewidth=0.4,
+        missing_kwds={"color": GRID})
+ax2.set_axis_off()
+ax2.set_title("Región Metropolitana", fontsize=11)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "mapa_nacional")
+(gdf_datos[["IdComuna", "Comuna", "Region", "den_6m", "p6", "p6_eb"]]
+ .to_csv(OUT / f"lme6_comunal_{ULTIMO_COMPLETO}.csv", index=False))
+```
+
+## Autocorrelación espacial global y su evolución
+
+```{python}
+#| label: moran-evolucion
+#| code-summary: "I de Moran por año (permutaciones)"
+from libpysal.weights import Queen, KNN, attach_islands
+
+def pesos_para(g):
+    """Queen con tolerancia topológica (buffer 250 m) + KNN-1 para islas reales."""
+    gb = g.copy()
+    gb["geometry"] = g.geometry.buffer(250)   # sanea huecos de digitalización
+    w = Queen.from_dataframe(gb, use_index=False, silence_warnings=True)
+    if w.islands:
+        cent = g.copy()
+        cent["geometry"] = g.geometry.centroid
+        w_knn = KNN.from_dataframe(cent, k=1, silence_warnings=True)
+        w = attach_islands(w, w_knn)
+    w.transform = "r"
+    return w
+
+morans = []
+for anio in range(2009, ULTIMO_COMPLETO + 1):
+    d = comunal_anual(anio)
+    g = shp.merge(d, on="IdComuna", how="inner").reset_index(drop=True)
+    w = pesos_para(g)
+    mi = esda.Moran(g["p6_eb"].values, w, permutations=999)
+    morans.append({"Ano": anio, "I": mi.I, "p_sim": mi.p_sim, "EI": mi.EI})
+morans = pd.DataFrame(morans)
+
+# sensibilidad (2024): tasa cruda vs EB vs estadístico de tasas de Assunção–Reis
+d24 = comunal_anual(ULTIMO_COMPLETO)
+g24 = shp.merge(d24, on="IdComuna", how="inner").reset_index(drop=True)
+w24s = pesos_para(g24)
+mi_cruda = esda.Moran(g24["p6"].values, w24s, permutations=999)
+mi_eb24 = esda.Moran(g24["p6_eb"].values, w24s, permutations=999)
+mi_rate = esda.moran.Moran_Rate(g24["lme_6m"].values, g24["den_6m"].values,
+                                w24s, permutations=999)
+nota(f"**Sensibilidad {ULTIMO_COMPLETO}**: I cruda = {mi_cruda.I:.3f} "
+     f"(p = {mi_cruda.p_sim:.3f}) | I EB = {mi_eb24.I:.3f} (p = {mi_eb24.p_sim:.3f}) | "
+     f"I de Assunção–Reis = {mi_rate.I:.3f} (p = {mi_rate.p_sim:.3f}) — la "
+     "autocorrelación es robusta al tratamiento de la inestabilidad de tasas.")
+boton_tabla(morans.round(3), "moran_anual")
+```
+
+```{python}
+#| label: fig-moran
+#| code-summary: "Evolución del I de Moran"
+#| fig-cap: "I de Moran global de la LME al 6.º mes comunal (tasas EB), 2009–2024. Pesos Queen estandarizados por filas (islas conectadas por KNN-1); inferencia por 999 permutaciones. Puntos rellenos: p ≤ 0,05."
+fig, ax = plt.subplots(figsize=(9, 4.2))
+sig = morans["p_sim"] <= 0.05
+ax.axhline(morans["EI"].mean(), color=MUT, lw=1, ls=":")
+ax.annotate("E[I] (independencia)", (morans["Ano"].iloc[0], morans["EI"].mean()),
+            xytext=(0, 5), textcoords="offset points", color=MUT, fontsize=8)
+ax.plot(morans["Ano"], morans["I"], color=PAL[0], lw=2)
+ax.scatter(morans.loc[sig, "Ano"], morans.loc[sig, "I"],
+           color=PAL[0], s=42, zorder=3, label="p ≤ 0,05")
+ax.scatter(morans.loc[~sig, "Ano"], morans.loc[~sig, "I"],
+           facecolor="white", edgecolor=PAL[0], s=42, zorder=3, label="n.s.")
+ax.set_ylabel("I de Moran")
+ax.set_xlabel("Año")
+ax.set_title("Evolución de la autocorrelación espacial de la LME al 6.º mes")
+ax.legend(frameon=False)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "moran")
+```
+
+### Autocorrelación espacial por edad de control
+
+```{python}
+#| label: fig-moran-edades
+#| code-summary: "I de Moran anual para el 1.er, 3.er y 6.º mes"
+#| fig-cap: "Evolución del I de Moran de la LME comunal (tasas EB) según edad de control, 2009–2024. Puntos rellenos: p ≤ 0,05 (999 permutaciones)."
+morans_edad = []
+for edad in ("1m", "3m", "6m"):
+    for anio in range(2009, ULTIMO_COMPLETO + 1):
+        d = comunal_anual(anio, edad=edad)
+        if len(d) < 30:
+            continue
+        g = shp.merge(d, on="IdComuna", how="inner").reset_index(drop=True)
+        w = pesos_para(g)
+        mi = esda.Moran(g["p6_eb"].values, w, permutations=999)
+        morans_edad.append({"edad": edad, "Ano": anio, "I": mi.I, "p": mi.p_sim})
+morans_edad = pd.DataFrame(morans_edad)
+
+fig, ax = plt.subplots(figsize=(9.5, 4.6))
+ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+ax.axhline(0, color=MUT, lw=1, ls=":")
+for i, edad in enumerate(("1m", "3m", "6m")):
+    s = morans_edad[morans_edad["edad"] == edad]
+    ax.plot(s["Ano"], s["I"], color=PAL[i], lw=2, label=ETIQ_EDAD[edad])
+    sig = s["p"] <= 0.05
+    ax.scatter(s.loc[sig, "Ano"], s.loc[sig, "I"], color=PAL[i], s=34, zorder=3)
+    ax.scatter(s.loc[~sig, "Ano"], s.loc[~sig, "I"], facecolor="white",
+               edgecolor=PAL[i], s=34, zorder=3)
+ax.set_ylabel("I de Moran")
+ax.set_xlabel("Año")
+ax.set_title("Autocorrelación espacial de la LME por edad de control")
+ax.legend(frameon=False)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "moran_edades")
+```
+
+## Clústeres locales (LISA) con corrección FDR
+
+```{python}
+#| label: lisa
+#| code-summary: "Moran local con FDR y clasificación de clústeres"
+w25 = pesos_para(gdf_datos)
+lisa = esda.Moran_Local(gdf_datos["p6_eb"].values, w25,
+                        permutations=9999, seed=SEED)
+umbral_fdr = esda.fdr(lisa.p_sim, 0.05)
+mapa_q = {1: "HH", 2: "LH", 3: "LL", 4: "HL"}
+
+def clasificar_lisa(pmax):
+    et = np.array(["ns"] * len(gdf_datos), dtype=object)
+    sig = lisa.p_sim <= pmax
+    et[sig] = [mapa_q[q] for q in lisa.q[sig]]
+    return et
+
+gdf_datos["lisa"] = clasificar_lisa(0.05)          # criterio convencional
+gdf_datos["lisa_fdr"] = clasificar_lisa(umbral_fdr)  # criterio conservador
+
+nombres_cl = {"HH": "Alto-Alto (hot spot)", "LL": "Bajo-Bajo (cold spot)",
+              "LH": "Bajo-Alto", "HL": "Alto-Bajo", "ns": "No significativo"}
+conteo = pd.DataFrame({
+    "p ≤ 0,05": pd.Series(gdf_datos["lisa"]).value_counts(),
+    "FDR 5 %": pd.Series(gdf_datos["lisa_fdr"]).value_counts(),
+}).fillna(0).astype(int).rename(index=nombres_cl)
+nota(f"**Umbral FDR** (α = 0,05, {len(gdf_datos)} pruebas simultáneas): "
+     f"p ≤ {umbral_fdr:.5f}.")
+boton_tabla(conteo, "lisa_conteo_clusters")
+```
+
+```{python}
+#| label: fig-lisa
+#| code-summary: "Mapa de clústeres LISA"
+#| fig-cap: "Clústeres LISA de la LME al 6.º mes (2024, tasas EB) con el criterio convencional (p ≤ 0,05); las comunas que además sobreviven la corrección FDR al 5 % se destacan con borde negro. Rojo: alta LME rodeada de alta (HH); azul: baja rodeada de baja (LL)."
+orden_lisa = ["HH", "HL", "LH", "LL", "ns"]
+etiquetas_lisa = {"HH": "Alto-Alto", "HL": "Alto-Bajo", "LH": "Bajo-Alto",
+                  "LL": "Bajo-Bajo", "ns": "No significativo"}
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.5, 10),
+                               gridspec_kw={"width_ratios": [1, 1.35]})
+for etq in orden_lisa:
+    capa = gdf_datos[gdf_datos["lisa"] == etq]
+    if len(capa):
+        capa.plot(ax=ax1, color=COL_LISA[etq], edgecolor="white", linewidth=0.15)
+        capa[capa["codregion"] == 13].plot(ax=ax2, color=COL_LISA[etq],
+                                           edgecolor="white", linewidth=0.4)
+capa_fdr = gdf_datos[gdf_datos["lisa_fdr"] != "ns"]
+if len(capa_fdr):
+    capa_fdr.plot(ax=ax1, facecolor="none", edgecolor=INK, linewidth=0.7)
+    capa_fdr[capa_fdr["codregion"] == 13].plot(ax=ax2, facecolor="none",
+                                               edgecolor=INK, linewidth=0.9)
+import matplotlib.patches as mpatches
+ax1.legend(handles=[mpatches.Patch(color=COL_LISA[e], label=etiquetas_lisa[e])
+                    for e in orden_lisa]
+                   + [mpatches.Patch(facecolor="none", edgecolor=INK,
+                                     label="Sobrevive FDR 5 %")],
+           loc="center left", fontsize=8, frameon=False)
+ax1.set_axis_off(); ax2.set_axis_off()
+ax1.set_title(f"Clústeres LISA — Chile, {ULTIMO_COMPLETO}", fontsize=11)
+ax2.set_title("Región Metropolitana", fontsize=11)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "lisa")
+```
+
+## Persistencia espacio-temporal de los clústeres
+
+```{python}
+#| label: persistencia
+#| code-summary: "Persistencia de clústeres 2019–2024 y transiciones de terciles"
+#| fig-cap: "Persistencia de clústeres LISA (años en que cada comuna fue HH o LL con p ≤ 0,05, 2019–2024). La persistencia multianual reduce la probabilidad de que un falso positivo aislado se clasifique como clúster estable, aunque las pruebas anuales no son independientes entre sí (mismo proceso espacial subyacente), por lo que no constituye un control formal de comparaciones múltiples."
+anios_persist = list(range(2019, ULTIMO_COMPLETO + 1))
+registro_lisa = {}
+for anio in anios_persist:
+    d = comunal_anual(anio)
+    g = shp.merge(d, on="IdComuna", how="inner").reset_index(drop=True)
+    w = pesos_para(g)
+    li = esda.Moran_Local(g["p6_eb"].values, w, permutations=999, seed=SEED)
+    et = np.array(["ns"] * len(g), dtype=object)
+    et[li.p_sim <= 0.05] = [mapa_q[q] for q in li.q[li.p_sim <= 0.05]]
+    registro_lisa[anio] = pd.Series(et, index=g["IdComuna"]).replace(
+        {"LH": "ns", "HL": "ns"})
+
+persist = pd.DataFrame(registro_lisa)
+n_hh = (persist == "HH").sum(axis=1)
+n_ll = (persist == "LL").sum(axis=1)
+persistencia = pd.DataFrame({"HH_anios": n_hh, "LL_anios": n_ll})
+persistencia["clase"] = np.select(
+    [persistencia["HH_anios"] >= 4, persistencia["LL_anios"] >= 4,
+     persistencia["HH_anios"] >= 1, persistencia["LL_anios"] >= 1],
+    ["HH persistente", "LL persistente", "HH intermitente", "LL intermitente"],
+    default="Nunca significativa")
+
+g_pers = shp.merge(persistencia.reset_index(), on="IdComuna", how="left")
+col_pers = {"HH persistente": PAL[5], "HH intermitente": "#f4a9a8",
+            "LL persistente": PAL[0], "LL intermitente": "#9ec5f4",
+            "Nunca significativa": GRID}
+fig, ax = plt.subplots(figsize=(6, 10))
+for clase, color in col_pers.items():
+    capa = g_pers[g_pers["clase"] == clase]
+    if len(capa):
+        capa.plot(ax=ax, color=color, edgecolor="white", linewidth=0.15)
+g_pers[g_pers["clase"].isna()].plot(ax=ax, color="white",
+                                    edgecolor=GRID, linewidth=0.15)
+ax.legend(handles=[mpatches.Patch(color=c, label=l) for l, c in col_pers.items()],
+          loc="center left", fontsize=8, frameon=False)
+ax.set_axis_off()
+ax.set_title("Persistencia de clústeres LISA de LME₆, 2019–2024", fontsize=11)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "persistencia")
+
+tabla_pers = (persistencia["clase"].value_counts().to_frame("Comunas"))
+boton_tabla(tabla_pers, "lisa_persistencia")
+```
+
+```{python}
+#| label: markov
+#| code-summary: "Matriz de transición de terciles (2009–2013 → 2021–2024)"
+#| tbl-cap: "Movilidad territorial: transición entre terciles de LME al 6.º mes desde el quinquenio 2009–2013 al cuadrienio 2021–2024 (probabilidades por fila)."
+def promedio_periodo(anios):
+    d = (cm[cm["Ano"].isin(anios)]
+         .groupby("IdComuna")[["lme_6m", "den_6m"]].sum())
+    d = d[d["den_6m"] >= 150]
+    return 100 * d["lme_6m"] / d["den_6m"]
+
+p_ini = promedio_periodo(range(2009, 2014))
+p_fin = promedio_periodo(range(2021, ULTIMO_COMPLETO + 1))
+ambos = pd.DataFrame({"ini": p_ini, "fin": p_fin}).dropna()
+ambos["terc_ini"] = pd.qcut(ambos["ini"], 3, labels=["T1 (baja)", "T2", "T3 (alta)"])
+ambos["terc_fin"] = pd.qcut(ambos["fin"], 3, labels=["T1 (baja)", "T2", "T3 (alta)"])
+trans = pd.crosstab(ambos["terc_ini"], ambos["terc_fin"], normalize="index").round(2)
+
+from scipy.stats import chi2_contingency
+chi2, p_chi, *_ = chi2_contingency(pd.crosstab(ambos["terc_ini"], ambos["terc_fin"]))
+nota(f"n = {len(ambos)} comunas | χ² = {chi2:.1f}, p = {p_chi:.1e} — "
+     "fuerte persistencia del rango territorial.")
+boton_tabla(trans, "transicion_terciles")
+```
+
+# Desigualdad territorial
+
+```{python}
+#| label: fig-desigualdad
+#| code-summary: "Gini y Theil ponderados; descomposición del Theil"
+#| fig-cap: "Desigualdad territorial de la LME al 6.º mes, 2009–2024. Izquierda: Gini ponderado y razón p90/p10 entre comunas. Derecha: índice de Theil descompuesto en componentes entre-regiones y dentro-de-regiones."
+def gini_ponderado(x, w):
+    idx = np.argsort(x)
+    x, w = np.asarray(x)[idx], np.asarray(w)[idx]
+    cw = np.cumsum(w) - 0.5 * w
+    cw /= w.sum()
+    mu = np.average(x, weights=w)
+    return 2 * np.sum(w * (x - mu) * (cw - 0.5)) / (w.sum() * mu)
+
+def percentil_ponderado(x, w, q):
+    idx = np.argsort(x)
+    x, w = np.asarray(x)[idx], np.asarray(w)[idx]
+    c = np.cumsum(w) / np.sum(w)
+    return np.interp(q, c, x)
+
+def theil_descompuesto(df):
+    mu = np.average(df["p6"], weights=df["den_6m"])
+    w = df["den_6m"] / df["den_6m"].sum()
+    r = df["p6"] / mu
+    T_total = np.sum(w * r * np.log(np.where(r > 0, r, 1)))
+    entre, dentro = 0.0, 0.0
+    for _, g in df.groupby("region"):
+        wg = g["den_6m"].sum() / df["den_6m"].sum()
+        mug = np.average(g["p6"], weights=g["den_6m"])
+        entre += wg * (mug / mu) * np.log(mug / mu)
+        wgi = g["den_6m"] / g["den_6m"].sum()
+        rgi = g["p6"] / mug
+        dentro += wg * (mug / mu) * np.sum(wgi * rgi * np.log(np.where(rgi > 0, rgi, 1)))
+    return T_total, entre, dentro
+
+com_reg = (cm[cm["Ano"] <= ULTIMO_COMPLETO]
+           .groupby(["Ano", "IdComuna", "region"])[["lme_6m", "den_6m"]]
+           .sum().reset_index())
+com_reg = com_reg[com_reg["den_6m"] >= 30]
+com_reg["p6"] = 100 * com_reg["lme_6m"] / com_reg["den_6m"]
+
+filas = []
+for anio, d in com_reg.groupby("Ano"):
+    T, entre, dentro = theil_descompuesto(d)
+    filas.append({
+        "Ano": anio,
+        "gini": gini_ponderado(d["p6"], d["den_6m"]),
+        "p90_p10": (percentil_ponderado(d["p6"], d["den_6m"], 0.9)
+                    / percentil_ponderado(d["p6"], d["den_6m"], 0.1)),
+        "theil": T, "theil_entre": entre, "theil_dentro": dentro,
+    })
+desig = pd.DataFrame(filas).set_index("Ano")
+desig.round(4).to_csv(OUT / "desigualdad_territorial.csv")
+
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.4))
+ax1.plot(desig.index, desig["gini"], color=PAL[0], lw=2, marker="o", ms=4,
+         label="Gini ponderado")
+ax1b_vals = desig["p90_p10"]
+ax1.plot(desig.index, (ax1b_vals - ax1b_vals.min()) /
+         (ax1b_vals.max() - ax1b_vals.min()) * desig["gini"].max(),
+         color=PAL[2], lw=1.6, marker="s", ms=3.5,
+         label="p90/p10 (reescalada)")
+ax1.set_title("Desigualdad entre comunas")
+ax1.set_ylabel("Índice")
+ax1.legend(frameon=False)
+
+ax2.stackplot(desig.index, desig["theil_entre"], desig["theil_dentro"],
+              colors=[PAL[0], "#9ec5f4"],
+              labels=["Entre regiones", "Dentro de regiones"])
+ax2.set_title("Índice de Theil (descomposición)")
+ax2.set_ylabel("Theil")
+ax2.legend(frameon=False, loc="upper right")
+for ax in (ax1, ax2):
+    ax.set_xlabel("Año")
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "desigualdad")
+pct_entre = 100 * desig["theil_entre"] / desig["theil"]
+nota(f"**Componente entre-regiones del Theil**: {pct_entre.iloc[0]:.0f} % (2009) → "
+     f"{pct_entre.iloc[-1]:.0f} % ({ULTIMO_COMPLETO}) — la mayor parte de la "
+     "desigualdad territorial ocurre dentro de las regiones.")
+```
+
+# Modelos
+
+## Panel nacional 2009–2024: trayectoria ajustada
+
+```{python}
+#| label: glm-panel
+#| code-summary: "GLM binomial con efectos fijos de año y región, EE agrupados por comuna"
+#| fig-cap: "Razones de odds de LME al 6.º mes por año (referencia 2010, primer año con cobertura comunal completa), ajustadas por región, con IC 95 % robustos a la agrupación por comuna."
+import patsy
+
+pnl = com_reg.copy()
+pnl["fracasos"] = pnl["den_6m"] - pnl["lme_6m"]
+
+# referencia = 2010, primer año con cobertura comunal completa (2009 informa ~302)
+X_glm = patsy.dmatrix("C(Ano, Treatment(reference=2010)) + C(region)",
+                      pnl, return_type="dataframe")
+mod_glm = sm.GLM(pnl[["lme_6m", "fracasos"]], X_glm,
+                 family=sm.families.Binomial()).fit(
+    cov_type="cluster", cov_kwds={"groups": pnl["IdComuna"]})
+
+coefs = mod_glm.params.filter(like="C(Ano")
+ci = mod_glm.conf_int().filter(like="C(Ano", axis=0)
+anios_or = [int(s.split("[T.")[1].rstrip("]")) for s in coefs.index]
+or_df = pd.DataFrame({
+    "Ano": anios_or, "OR": np.exp(coefs.values),
+    "lo": np.exp(ci[0].values), "hi": np.exp(ci[1].values)}).set_index("Ano")
+
+fig, ax = plt.subplots(figsize=(9, 4.4))
+ax.axhline(1, color=MUT, lw=1, ls=":")
+ax.errorbar(or_df.index, or_df["OR"],
+            yerr=[or_df["OR"] - or_df["lo"], or_df["hi"] - or_df["OR"]],
+            fmt="o", color=PAL[0], ms=5, lw=1.4, capsize=2)
+ax.set_ylabel("OR de LME₆ (ref. 2010)")
+ax.set_xlabel("Año")
+ax.set_title("Trayectoria nacional ajustada de la LME al 6.º mes (GLM binomial)")
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "glm_panel")
+```
+
+## Regresión espacial (corte transversal 2024)
+
+```{python}
+#| label: spreg
+#| code-summary: "MCO con diagnósticos LM, ML-Lag y ML-Error"
+# covariables internas del REM: tamaño (log controles) y composición de los controles
+comp = cm[cm["Ano"] == ULTIMO_COMPLETO].groupby("IdComuna").agg(
+    den_6m=("den_6m", "sum"), lme_6m=("lme_6m", "sum"),
+    den_total=("den_total", "sum"), den_po=("den_po", "sum"),
+    den_mig=("den_mig", "sum")).reset_index()
+comp = comp[comp["den_6m"] >= 30]
+comp["p6_eb"] = 100 * eb_suavizar(comp["lme_6m"], comp["den_6m"])
+comp["log_den"] = np.log(comp["den_6m"])
+comp["pct_po"] = 100 * comp["den_po"] / comp["den_total"].replace(0, np.nan)
+comp["pct_mig"] = 100 * comp["den_mig"] / comp["den_total"].replace(0, np.nan)
+comp = comp.dropna(subset=["pct_po", "pct_mig"])
+
+g_mod = shp.merge(comp, on="IdComuna", how="inner").reset_index(drop=True)
+w_mod = pesos_para(g_mod)
+
+y = g_mod[["p6_eb"]].values
+X = g_mod[["log_den", "pct_po", "pct_mig"]].values
+nombres_x = ["log(controles 6m)", "% pueblos originarios", "% migrantes"]
+
+ols = spreg.OLS(y, X, w=w_mod, spat_diag=True, moran=True,
+                name_y="LME6_EB", name_x=nombres_x)
+lag = spreg.ML_Lag(y, X, w=w_mod, name_y="LME6_EB", name_x=nombres_x)
+err = spreg.ML_Error(y, X, w=w_mod, name_y="LME6_EB", name_x=nombres_x)
+
+def fila(nombre, m, extra=""):
+    return {"Modelo": nombre, "AIC": round(getattr(m, "aic", np.nan), 1),
+            "Pseudo/R²": round(getattr(m, "pr2", getattr(m, "r2", np.nan)), 3),
+            "Parámetro espacial": extra}
+
+comp_tab = pd.DataFrame([
+    fila("MCO", ols),
+    fila("Rezago espacial (ML-Lag)", lag, f"ρ = {float(lag.rho):.3f}"),
+    fila("Error espacial (ML-Error)", err, f"λ = {float(err.lam):.3f}"),
+])
+nota(f"**Diagnósticos LM (MCO)**: LM-lag p = {ols.lm_lag[1]:.4f} | "
+     f"LM-error p = {ols.lm_error[1]:.4f} | LM-lag robusto p = {ols.rlm_lag[1]:.4f} | "
+     f"LM-error robusto p = {ols.rlm_error[1]:.4f}. Regla de Anselin–Florax: con ambos "
+     "LM robustos no significativos, los diagnósticos no discriminan entre rezago y "
+     "error espacial; se reportan ambas especificaciones sin declarar una «mejor».")
+
+# sensibilidad: misma especificación sobre la tasa CRUDA (la tasa EB depende de
+# den_6m por construcción, lo que vuelve mecánica parte de la asociación con log_den)
+y_cruda = (100 * g_mod["lme_6m"] / g_mod["den_6m"]).values.reshape(-1, 1)
+err_crudo = spreg.ML_Error(y_cruda, X, w=w_mod, name_y="LME6_cruda", name_x=nombres_x)
+nota(f"**Sensibilidad con tasa cruda** (ML-Error): λ = {float(err_crudo.lam):.3f}; "
+     f"coeficiente de log(controles): EB = {err.betas[1, 0]:.3f} vs cruda = "
+     f"{err_crudo.betas[1, 0]:.3f}. El coeficiente de tamaño **no** es interpretable "
+     "como efecto causal: parte es artefacto de la contracción EB.")
+boton_tabla(comp_tab, "modelos_espaciales_comparacion")
+```
+
+```{python}
+#| label: spreg-coef
+#| code-summary: "Coeficientes de ambas especificaciones espaciales"
+#| tbl-cap: "Coeficientes de los modelos de rezago espacial (ML-Lag) y de error espacial (ML-Error) para la LME al 6.º mes comunal (2024, tasas EB). Los diagnósticos LM robustos no discriminan entre especificaciones; el AIC favorece levemente al ML-Error."
+def tabla_coefs(m, param_esp, nombre_esp):
+    ee = np.sqrt(np.diag(m.vm))
+    variables = ["Constante"] + nombres_x + [nombre_esp]
+    coefs = list(m.betas.flatten()[:len(nombres_x) + 1]) + [float(param_esp)]
+    ees = list(ee[:len(nombres_x) + 1]) + [float(ee[-1])]
+    return pd.DataFrame({"Coef.": coefs, "EE": ees}, index=variables)
+
+t_lag = tabla_coefs(lag, lag.rho, "ρ (rezago)").add_suffix(" ML-Lag")
+t_err = tabla_coefs(err, err.lam, "λ (error)").rename(
+    index={"λ (error)": "ρ (rezago)"}).add_suffix(" ML-Error")
+coef_ambos = t_lag.join(t_err, how="outer").rename(
+    index={"ρ (rezago)": "Parámetro espacial (ρ / λ)"})
+boton_tabla(coef_ambos.round(3), "coeficientes_espaciales")
+```
+
+# Composición de la alimentación y poblaciones específicas
+
+## Composición de tipos de alimentación al 6.º mes (2017–2026)
+
+Desde 2017 el REM desagrega la alimentación del niño controlado más allá de la LME:
+lactancia con fórmula (mixta, 03500359), fórmula exclusiva (03500360) y, desde 2021,
+las variantes con alimentación complementaria (03600140, 03600150). Esto permite
+reconstruir la **composición completa** de la alimentación al 6.º mes.
+
+```{python}
+#| label: fig-composicion
+#| code-summary: "Composición 100 % de la alimentación al 6.º mes"
+#| fig-cap: "Composición de la alimentación infantil en el control del 6.º mes, 2017–2026 (porcentaje de los niños controlados). «Sin clasificar» es el residuo (truncado en 0) entre el denominador y la suma de categorías; desde 2024 la suma de categorías excede levemente el denominador (~1 pp) por inconsistencias de registro. La línea vertical marca 2021, cuando el formulario agregó las categorías con alimentación complementaria. Años 2025–2026 provisionales."
+CODIGOS_TIPO = [
+    ("A0200002", "LME", PAL[0]),
+    ("A0200003", "LM + alimentación complementaria", PAL[1]),
+    ("03500359", "LM + fórmula (mixta)", PAL[2]),
+    ("03600140", "LM + fórmula + complementaria", PAL[4]),
+    ("03500360", "Fórmula exclusiva", PAL[5]),
+    ("03600150", "Fórmula + complementaria", PAL[7]),
+]
+den6_anual = cm.groupby("Ano")["den_6m"].sum()
+partes_comp = {}
+for cod, etiqueta, _ in CODIGOS_TIPO:
+    t = arm[arm["codigo"] == cod].groupby("Ano")["6m"].sum()
+    partes_comp[etiqueta] = (100 * t / den6_anual).reindex(den6_anual.index).fillna(0)
+comp_df = pd.DataFrame(partes_comp).loc[2017:]
+comp_df["Sin clasificar"] = (100 - comp_df.sum(axis=1)).clip(lower=0)
+
+fig, ax = plt.subplots(figsize=(9.5, 5.4))
+ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+colores_comp = [c for _, _, c in CODIGOS_TIPO] + [GRID]
+ax.stackplot(comp_df.index, comp_df.T.values, labels=comp_df.columns,
+             colors=colores_comp, alpha=0.9)
+ax.axvline(2021, color=INK2, lw=1, ls=":")
+ax.annotate("nuevas categorías", (2021, 99), color=INK2, fontsize=8,
+            ha="center", va="top")
+ax.set_xlim(2017, 2026)
+ax.set_ylim(0, 100)
+ax.set_ylabel("% de niños controlados al 6.º mes")
+ax.set_xlabel("Año")
+ax.set_title("Composición de la alimentación al 6.º mes, 2017–2026")
+ax.legend(loc="center left", bbox_to_anchor=(1.01, 0.5), frameon=False, fontsize=8.5)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "composicion")
+comp_df.round(2).to_csv(OUT / "composicion_alimentacion_6m.csv")
+exceso_anios = comp_df.index[comp_df.drop(columns="Sin clasificar").sum(axis=1) > 100.5]
+nota("Antes de 2021 los niños con lactancia mixta o fórmula **más alimentación "
+     "complementaria** (códigos 03600140 y 03600150) no tenían categoría propia, por "
+     "lo que el bloque «sin clasificar» es mayor en 2017–2020: la comparación fina de "
+     "categorías mixtas solo es válida desde 2021."
+     + (f" En {', '.join(map(str, exceso_anios))} la suma de categorías supera el "
+        "denominador (inconsistencia de registro; el residuo se trunca en 0)."
+        if len(exceso_anios) else ""))
+```
+
+## Brecha por sexo (2017–2022)
+
+```{python}
+#| label: fig-sexo
+#| code-summary: "LME al 6.º mes por sexo"
+#| fig-cap: "LME al 6.º mes por sexo del lactante, 2017–2022 (única era del REM con desagregación por sexo). Bandas: IC 95 % de Wilson."
+sx = arm[(arm["codigo"].isin([COD_LME, COD_DEN])) &
+         (arm["Ano"].between(2017, 2022))]
+res_sx = []
+for sexo, color in [("H", PAL[0]), ("M", PAL[6])]:
+    col = f"6m_{sexo}"
+    if col not in sx.columns:
+        continue
+    t = sx.groupby(["Ano", "codigo"])[col].sum().unstack("codigo")
+    p = 100 * t[COD_LME] / t[COD_DEN]
+    lo, hi = proportion_confint(t[COD_LME], t[COD_DEN], method="wilson")
+    res_sx.append((sexo, p, 100 * lo, 100 * hi, color))
+
+fig, ax = plt.subplots(figsize=(8.5, 4.4))
+etiq_sx = {"H": "Niños", "M": "Niñas"}
+for sexo, p, lo, hi, color in res_sx:
+    ax.plot(p.index, p.values, color=color, lw=2, marker="o", ms=4,
+            label=etiq_sx[sexo])
+    ax.fill_between(p.index, lo, hi, color=color, alpha=0.15, lw=0)
+ax.set_ylabel("LME₆ (%)")
+ax.set_xlabel("Año")
+ax.set_title("Brecha por sexo en la LME al 6.º mes, 2017–2022")
+ax.legend(frameon=False)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "sexo")
+if len(res_sx) == 2:
+    dif = res_sx[1][1] - res_sx[0][1]
+    nota("**Diferencia niñas − niños** (pp): "
+         + "; ".join(f"{a}: {v:+.1f}" for a, v in dif.round(1).items()) + ".")
+```
+
+```{python}
+#| label: fig-sexo-edades
+#| code-summary: "Brecha por sexo según edad de control"
+#| fig-cap: "Brecha por sexo (niñas − niños, puntos porcentuales) en la LME según edad de control, 2017–2022."
+brechas_sx = {}
+for edad in ("1m", "3m", "6m"):
+    ch, cm_ = f"{edad}_H", f"{edad}_M"
+    t = sx.groupby(["Ano", "codigo"])[[ch, cm_]].sum()
+    lme_t = t.xs(COD_LME, level="codigo")
+    den_t = t.xs(COD_DEN, level="codigo")
+    p_h = 100 * lme_t[ch] / den_t[ch]
+    p_m = 100 * lme_t[cm_] / den_t[cm_]
+    brechas_sx[edad] = p_m - p_h
+
+fig, ax = plt.subplots(figsize=(8.5, 4.2))
+ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+ax.axhline(0, color=MUT, lw=1, ls=":")
+for i, (edad, b) in enumerate(brechas_sx.items()):
+    ax.plot(b.index, b.values, color=PAL[i], lw=2, marker="o", ms=4,
+            label=ETIQ_EDAD[edad])
+ax.set_ylabel("Brecha niñas − niños (pp)")
+ax.set_xlabel("Año")
+ax.set_title("Brecha por sexo en la LME según edad de control, 2017–2022")
+ax.legend(frameon=False)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "sexo_edades")
+```
+
+## Pueblos originarios y migrantes (2021+)
+
+Las columnas de pueblos originarios y migrantes tienen **calidad de registro
+sustancialmente menor** que el resto de la sección: el denominador grupal de A0200001
+está subregistrado respecto del numerador (los controles migrantes acumulados
+2021–2024 equivalen a ~1 % del denominador total, implausible frente a la proporción
+migrante de los nacimientos) y abundan celdas comuna-mes con numerador mayor que su
+denominador. Por eso estos análisis usan un tratamiento específico: las celdas
+inconsistentes se **excluyen de ambos lados** (numerador y denominador) en lugar de
+truncarse, el mismo criterio en las dos figuras, y se reporta la sensibilidad. Las
+brechas resultantes deben leerse como indicadores de **calidad de registro tanto como
+de práctica de lactancia**.
+
+```{python}
+#| label: equidad-datos
+#| code-summary: "Preparación consistente de los datos de PO/migrantes"
+eqc = {}
+for grupo in ("po", "mig", "total"):
+    lme_g = (arm[arm["codigo"] == COD_LME]
+             .groupby(["Ano", "Mes", "IdComuna", "region"])[grupo].sum())
+    den_g = (arm[arm["codigo"] == COD_DEN]
+             .groupby(["Ano", "Mes", "IdComuna", "region"])[grupo].sum())
+    t = pd.DataFrame({"lme": lme_g, "den": den_g}).fillna(0)
+    inconsistentes = t["lme"] > t["den"]
+    t.loc[inconsistentes, ["lme", "den"]] = 0.0  # exclusión de ambos lados
+    t["excluida"] = inconsistentes
+    eqc[grupo] = t.reset_index()
+excl_txt = {g: f"{int(t['excluida'].sum()):,}" for g, t in eqc.items()}
+nota("Celdas comuna-mes excluidas por registro inconsistente (numerador > "
+     f"denominador): pueblos originarios {excl_txt['po']}, migrantes "
+     f"{excl_txt['mig']}, total {excl_txt['total']}. **Sensibilidad**: con "
+     "truncamiento (num := den) en vez de exclusión, la brecha migrante cambia de "
+     "signo en varias regiones; los resultados de esta sección son, por tanto, "
+     "fuertemente dependientes de la calidad del registro grupal.")
+```
+
+```{python}
+#| label: fig-equidad
+#| code-summary: "Brechas de LME en poblaciones específicas"
+#| fig-cap: "LME en pueblos originarios y migrantes respecto del total nacional, 2021–2026 (celdas inconsistentes excluidas de numerador y denominador). En estas columnas del REM la LME no se desagrega por edad de control, por lo que se compara contra el total de la sección."
+filas_eq = []
+for grupo, etiqueta in [("po", "Pueblos originarios"), ("mig", "Migrantes"),
+                        ("total", "Total")]:
+    t = (eqc[grupo][eqc[grupo]["Ano"] >= 2021]
+         .groupby("Ano")[["lme", "den"]].sum())
+    t = t[t["den"] > 0]
+    filas_eq.append(pd.DataFrame({
+        "Ano": t.index, "grupo": etiqueta, "p": 100 * t["lme"] / t["den"]}))
+eq_df = pd.concat(filas_eq)
+
+fig, ax = plt.subplots(figsize=(8.5, 4.4))
+colores_eq = {"Total": MUT, "Pueblos originarios": PAL[2], "Migrantes": PAL[4]}
+for etiqueta, d in eq_df.groupby("grupo"):
+    ax.plot(d["Ano"], d["p"], lw=2, marker="o", ms=4,
+            color=colores_eq[etiqueta], label=etiqueta)
+ax.axvspan(2024.5, 2026.5, color=GRID, alpha=0.35, zorder=0)
+ax.set_ylabel("LME (%) — total de la sección")
+ax.set_xlabel("Año")
+ax.set_title("LME en poblaciones específicas, 2021–2026")
+ax.legend(frameon=False)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "equidad")
+```
+
+```{python}
+#| label: fig-equidad-regional
+#| code-summary: "Brechas regionales en pueblos originarios y migrantes"
+#| fig-cap: "LME (total de la sección) por región en pueblos originarios y migrantes respecto de la población total, 2021–2024 agrupados, con celdas inconsistentes excluidas de ambos lados. Cada segmento une la prevalencia del grupo con la del total regional; regiones ordenadas de norte a sur. El punto de un grupo se omite cuando la región acumula menos de 200 controles de ese grupo en el período (denominadores inestables); dado el subregistro de los denominadores grupales, estas brechas reflejan calidad de registro tanto como práctica de lactancia."
+eqr_parts = {
+    g: (eqc[g][eqc[g]["Ano"].between(2021, ULTIMO_COMPLETO)]
+        .groupby("region")[["lme", "den"]].sum())
+    for g in ("po", "mig", "total")
+}
+UMBRAL_GRUPO = 200  # mínimo de controles acumulados por grupo y región
+eqr = pd.DataFrame({
+    "p_total": 100 * eqr_parts["total"]["lme"] / eqr_parts["total"]["den"],
+    "p_po": (100 * eqr_parts["po"]["lme"] / eqr_parts["po"]["den"])
+        .where(eqr_parts["po"]["den"] >= UMBRAL_GRUPO),
+    "p_mig": (100 * eqr_parts["mig"]["lme"] / eqr_parts["mig"]["den"])
+        .where(eqr_parts["mig"]["den"] >= UMBRAL_GRUPO),
+})
+eqr = eqr[eqr[["p_po", "p_mig"]].notna().any(axis=1)]
+orden_pres = [r for r in orden_reg if r in eqr.index]
+eqr = eqr.loc[orden_pres]
+omitidas = [f"{NOMBRES_REGION[r]} ({g})"
+            for g, col in (("PO", "p_po"), ("mig", "p_mig"))
+            for r in eqr.index[eqr[col].isna()]]
+
+fig, ax = plt.subplots(figsize=(9.5, 7))
+ypos = np.arange(len(eqr))[::-1]
+for y, (_, fila) in zip(ypos, eqr.iterrows()):
+    if np.isfinite(fila["p_po"]):
+        ax.plot([fila["p_total"], fila["p_po"]], [y + 0.16, y + 0.16],
+                color=PAL[2], lw=1.4, zorder=1)
+    if np.isfinite(fila["p_mig"]):
+        ax.plot([fila["p_total"], fila["p_mig"]], [y - 0.16, y - 0.16],
+                color=PAL[4], lw=1.4, zorder=1)
+ax.scatter(eqr["p_total"], ypos + 0.16, color=MUT, s=34, zorder=2)
+ax.scatter(eqr["p_total"], ypos - 0.16, color=MUT, s=34, zorder=2, label="Total regional")
+ax.scatter(eqr["p_po"], ypos + 0.16, color=PAL[2], s=44, zorder=3,
+           label="Pueblos originarios")
+ax.scatter(eqr["p_mig"], ypos - 0.16, color=PAL[4], s=44, zorder=3, label="Migrantes")
+ax.set_yticks(ypos)
+ax.set_yticklabels([NOMBRES_REGION[r] for r in eqr.index], fontsize=9)
+ax.set_xlabel("LME (%) — total de la sección, 2021–2024")
+ax.set_title("Brechas regionales de LME en poblaciones específicas")
+ax.legend(frameon=False, loc="lower right")
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "equidad_regional")
+if omitidas:
+    nota("Grupos omitidos por denominador regional < 200 controles acumulados: "
+         + "; ".join(omitidas) + ".")
+(eqr[["p_total", "p_po", "p_mig"]].round(2)
+ .rename(index=NOMBRES_REGION).to_csv(OUT / "brechas_regionales_po_mig.csv"))
+```
+
+## Díadas neonatales (2023+)
+
+Desde 2023 el REM registra la lactancia en la **díada madre–recién nacido** en los
+primeros controles de vida: en 2023 con una única columna neonatal y desde 2024
+desagregada en dos ventanas (hasta 10 días y entre 11 y 28 días). Esto permite
+observar el punto de partida de la LME antes del primer mes; el punto 2023 se muestra
+aislado porque no es comparable con las ventanas desagregadas.
+
+```{python}
+#| label: fig-diadas
+#| code-summary: "LME en las díadas neonatales"
+#| fig-cap: "LME en los controles de díada comparada con el 1.er y el 6.º mes. En 2023 el REM registró una única columna neonatal (rombo aislado); las ventanas ≤10 días y 11–28 días existen desde 2024 y no son comparables con 2023. Años 2025–2026 provisionales."
+cols_diada = [c for c in ("diada_0_10", "diada_11_28") if f"den_{c}" in cm.columns]
+dd = cm[cm["Ano"] >= 2023].groupby("Ano")[
+    [f"lme_{c}" for c in cols_diada] + [f"den_{c}" for c in cols_diada]
+    + ["lme_1m", "den_1m", "lme_6m", "den_6m"]].sum()
+
+series_dd = {"Díada ≤10 días": ("diada_0_10", PAL[6]),
+             "Díada 11–28 días": ("diada_11_28", PAL[4]),
+             "1.er mes": ("1m", PAL[0]), "6.º mes": ("6m", PAL[2])}
+fig, ax = plt.subplots(figsize=(8.5, 4.6))
+ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+for etiqueta, (clave, color) in series_dd.items():
+    if f"den_{clave}" not in dd.columns:
+        continue
+    den_s = dd[f"den_{clave}"].replace(0, np.nan)
+    p = (100 * dd[f"lme_{clave}"] / den_s).dropna()
+    if clave == "diada_11_28" and 2023 in p.index:
+        # 2023: columna única sin desagregación etaria -> punto aislado
+        ax.scatter([2023], [p.loc[2023]], color=color, marker="D", s=48, zorder=3,
+                   label="Díada ≤28 días (columna única 2023)")
+        p = p.drop(index=2023)
+    if p.empty:
+        continue
+    ax.plot(p.index, p.values, color=color, lw=2, marker="o", ms=5, label=etiqueta)
+ax.axvspan(2024.5, 2026.5, color=GRID, alpha=0.35, zorder=0)
+ax.set_ylabel("LME (%)")
+ax.set_xlabel("Año")
+ax.set_title("LME desde la díada neonatal hasta el 6.º mes, 2023–2026")
+ax.legend(frameon=False)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "diadas")
+```
+
+# Mapa interactivo
+
+```{python}
+#| label: folium
+#| code-summary: "Mapa interactivo (folium): tasas EB y clústeres LISA 2024"
+import folium
+import branca.colormap as bcm
+
+g4326 = gdf_datos.to_crs(4326).copy()
+# geometrías simplificadas (~200 m) para aligerar el HTML interactivo
+g4326["geometry"] = g4326.geometry.simplify(0.002, preserve_topology=True)
+g4326["p6_r"] = g4326["p6"].round(1)
+g4326["p6_eb_r"] = g4326["p6_eb"].round(1)
+g4326["den_r"] = g4326["den_6m"].astype(int)
+m = folium.Map(location=[-33.45, -70.66], zoom_start=5, tiles="cartodbpositron")
+
+vmin, vmax = g4326["p6_eb"].quantile([0.02, 0.98])
+cmap_fol = bcm.LinearColormap(SEQ_STEPS, vmin=vmin, vmax=vmax,
+                              caption=f"LME al 6.º mes (%, tasas EB, {ULTIMO_COMPLETO})")
+
+folium.GeoJson(
+    g4326[["IdComuna", "Comuna", "Region", "p6_r", "p6_eb_r", "den_r", "lisa",
+           "geometry"]],
+    name=f"LME₆ {ULTIMO_COMPLETO} (EB)",
+    style_function=lambda f: {
+        "fillColor": cmap_fol(f["properties"]["p6_eb_r"]),
+        "color": "white", "weight": 0.4, "fillOpacity": 0.85},
+    tooltip=folium.GeoJsonTooltip(
+        fields=["Comuna", "Region", "p6_r", "p6_eb_r", "den_r", "lisa"],
+        aliases=["Comuna", "Región", "LME₆ cruda (%)", "LME₆ EB (%)",
+                 "Controles 6.º mes", "Clúster LISA (p≤0,05)"],
+        localize=True),
+).add_to(m)
+
+capa_lisa = g4326[g4326["lisa"] != "ns"][["IdComuna", "Comuna", "lisa", "geometry"]]
+if len(capa_lisa):
+    folium.GeoJson(
+        capa_lisa,
+        name="Clústeres LISA (p ≤ 0,05)",
+        style_function=lambda f: {
+            "fillColor": COL_LISA[f["properties"]["lisa"]],
+            "color": "white", "weight": 0.4, "fillOpacity": 0.9},
+        tooltip=folium.GeoJsonTooltip(fields=["Comuna", "lisa"],
+                                      aliases=["Comuna", "Clúster"]),
+        show=False,
+    ).add_to(m)
+
+cmap_fol.add_to(m)
+folium.LayerControl(collapsed=False).add_to(m)
+
+# escritura robusta: primero a disco local, luego copia con reintentos
+# (la carpeta del proyecto vive en un sistema de archivos de Google Drive
+# que ocasionalmente agota el tiempo de escrituras grandes)
+import tempfile, time as _time
+
+ruta_mapa = OUT / "mapa_interactivo_lme6_lisa.html"
+with tempfile.NamedTemporaryFile(suffix=".html", delete=False) as tmpf:
+    tmp_html = Path(tmpf.name)
+m.save(str(tmp_html))
+contenido = tmp_html.read_bytes()
+tmp_html.unlink()
+for intento in range(3):
+    try:
+        ruta_mapa.write_bytes(contenido)
+        break
+    except OSError:
+        if intento == 2:
+            raise
+        _time.sleep(5)
+nota(f"Mapa interactivo guardado en `{ruta_mapa.relative_to(RAIZ)}` "
+     f"({len(contenido) / 1048576:.1f} MB).")
+```
+
+El mapa interactivo (tasas EB con *tooltip* comunal y capa de clústeres LISA) queda
+disponible en `output_files/stage4/mapa_interactivo_lme6_lisa.html`.
+
+# Discusión
+
+Los resultados principales de la serie 2009–2026 pueden sintetizarse en siete hallazgos:
+
+1. **Trayectoria nacional**: la serie tiene dos regímenes separados por el quiebre
+   estructural de 2015 (44–45 % → ascenso sostenido hasta ~62 % en 2019); el ITS sobre
+   el régimen post-quiebre cuantifica la **interrupción asociada a la pandemia**
+   (caída de nivel y cambio de pendiente en marzo 2020) y la ausencia de recuperación
+   posterior. Esta estimación no es un efecto causal puro: la caída de ~37 % del
+   denominador de controles en 2020 implica selección de la subpoblación asistente, y
+   el contrafactual es una extrapolación lineal del régimen 2015–2019.
+2. **Heterogeneidad territorial persistente**: la autocorrelación espacial global es
+   positiva y significativa en prácticamente toda la serie, lo que indica que la LME no
+   se distribuye aleatoriamente en el territorio, sino en macro-zonas de alta y baja
+   prevalencia.
+3. **Clústeres estables**: con el criterio convencional (p ≤ 0,05) los clústeres LISA
+   muestran hot spots y cold spots que reaparecen año tras año (2019–2024); bajo el
+   criterio conservador FDR solo un núcleo reducido de comunas permanece significativo
+   en 2024, lo que acota la evidencia de clusterización local fuerte. La matriz de
+   transición de terciles evidencia una marcada inercia de rango: la mayoría de las
+   comunas permanece en su tercil de origen tras más de una década.
+4. **Desigualdad y convergencia**: los índices de Gini y Theil documentan el nivel y la
+   evolución de la desigualdad territorial; la descomposición del Theil indica cuánto
+   de ella se explica entre regiones versus dentro de ellas.
+5. **Brechas poblacionales**: la desagregación por sexo (2017–2022) muestra una
+   brecha pequeña y estable. Las columnas de pueblos originarios y migrantes (2021+)
+   exhiben heterogeneidad regional, pero sus denominadores están subregistrados y las
+   brechas cambian de signo según el tratamiento de las celdas inconsistentes: antes
+   que conclusiones de práctica de lactancia, son un llamado a mejorar la calidad del
+   registro grupal del REM para poder monitorear equidad.
+6. **La mejora histórica fue de retención, no de inicio**: la LME al 1.er mes
+   descendió a lo largo de la serie, mientras la razón de retención 6.º/1.er mes subió
+   hasta 2019 (con parte del salto concentrado en el quiebre de registro de 2015);
+   tras 2019 la retención se mantiene alta y el deterioro se concentra en el nivel
+   inicial. La lactancia continuada al año no es comparable a través de 2021 por la
+   re-codificación del formulario; su versión ampliada se mantiene estable. Las
+   díadas neonatales (2023+) agregan un punto de partida pre-primer mes para el
+   monitoreo futuro.
+7. **Composición**: desde 2021 la desagregación completa muestra el peso relativo de
+   la lactancia mixta y la fórmula al 6.º mes, y cuantifica el residuo «sin
+   clasificar» de las eras anteriores del formulario.
+
+# Limitaciones
+
+- **Denominadores administrativos**: las prevalencias se calculan sobre niños con
+  control de salud vigente en el sistema público (REM), no sobre cohortes
+  poblacionales; cambios en cobertura de control (p. ej., 2020) afectan numerador y
+  denominador simultáneamente.
+- **Cambios de formulario**: aunque el mapeo por año fue validado contra los
+  diccionarios oficiales, las definiciones operativas de registro pueden haber
+  cambiado sutilmente entre eras.
+- **Falacia ecológica y MAUP**: las asociaciones comunales no son inferencias
+  individuales, y los resultados espaciales dependen de la unidad de agregación.
+- **2025 en consolidación y 2026 preliminar**: se excluyeron de modelos e inferencia.
+- **Contrafactual del ITS**: es una extrapolación lineal del régimen 2015–2019 a casi
+  cinco años; la brecha estimada respecto de lo observado debe leerse como orden de
+  magnitud, con incertidumbre creciente en el horizonte.
+- **Calidad del registro**: existen varios miles de celdas indicador×comuna-mes con
+  numerador mayor que el denominador (recuento exacto reportado en el chunk de
+  armonización; truncadas al denominador salvo en la sección de pueblos
+  originarios/migrantes, donde se excluyen de ambos lados), los denominadores
+  grupales de pueblos originarios y migrantes están sustancialmente subregistrados
+  respecto de sus numeradores, y el shapefile presenta huecos de topología que se
+  sanearon con un buffer de tolerancia. Todo ello se documenta y trata
+  explícitamente, pero recuerda que el REM es un registro administrativo con errores
+  de origen.
+- Las columnas de pueblos originarios y migrantes no se desagregan por edad de
+  control, por lo que sus prevalencias no son estrictamente comparables con LME₆.
+
+# Referencias
+
+- Anselin, L. (1995). Local Indicators of Spatial Association—LISA. *Geographical Analysis*, 27(2), 93–115.
+- Bernal, J. L., Cummins, S., & Gasparrini, A. (2017). Interrupted time series regression for the evaluation of public health interventions. *International Journal of Epidemiology*, 46(1), 348–355.
+- Caldas de Castro, M., & Singer, B. (2006). Controlling the false discovery rate: a new application to account for multiple and dependent tests in local statistics of spatial association. *Geographical Analysis*, 38(2), 180–208.
+- Killick, R., Fearnhead, P., & Eckley, I. A. (2012). Optimal detection of changepoints with a linear computational cost. *JASA*, 107(500), 1590–1598.
+- Marshall, R. J. (1991). Mapping disease and mortality rates using empirical Bayes estimators. *Applied Statistics*, 40(2), 283–294.
+- Ministerio de Salud de Chile. Manuales de las Series REM 2009–2026. DEIS.
+- Rey, S. J., & Anselin, L. (2010). PySAL: A Python library of spatial analytical methods. En *Handbook of Applied Spatial Analysis*. Springer.
+- Víctora, C. G., et al. (2016). Breastfeeding in the 21st century. *The Lancet*, 387(10017), 475–490.
+
+# Anexo: armonización de columnas por año {#sec-anexo}
+
+```{python}
+#| label: anexo-mapeo
+#| code-summary: "Tabla de armonización columna→significado (LME, A0200002)"
+#| tbl-cap: "Columnas del código A0200002 (LME) usadas por año y edad de control, según los diccionarios oficiales DEIS."
+filas_anexo = []
+for anio_str, info in sorted(mapeo.items()):
+    cfg = info["codigos"].get(COD_LME, {})
+    fila = {"Año": anio_str, "Archivo diccionario": info["_archivo"]}
+    for e in EDADES:
+        fila[ETIQ_EDAD[e]] = "+".join(cfg.get("edad_cols", {}).get(e, [])) or "—"
+    fila["P. originarios"] = "+".join(cfg.get("po_cols", [])) or "—"
+    fila["Migrantes"] = "+".join(cfg.get("mig_cols", [])) or "—"
+    filas_anexo.append(fila)
+boton_tabla(pd.DataFrame(filas_anexo).set_index("Año"), "anexo_mapeo_columnas")
+```
+
+```{python}
+#| label: anexo-qc
+#| code-summary: "QC del ETL"
+#| tbl-cap: "Control de calidad del ETL por año (filas agregadas y anomalías)."
+boton_tabla(pd.DataFrame(qc_etl).T[["filas_agregadas", "comuna_vacia"]].rename(
+    columns={"filas_agregadas": "Filas agregadas", "comuna_vacia": "Filas sin comuna"}), "anexo_qc_etl")
+```

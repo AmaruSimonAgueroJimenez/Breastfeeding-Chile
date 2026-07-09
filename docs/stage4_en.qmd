@@ -1,0 +1,1682 @@
+---
+title: "Stage 4: Breastfeeding in Chile, 2009–2026 — full national series, geospatial analysis and territorial inequality"
+lang: en
+author:
+  - name: "Health Data Analysis"
+date: "today"
+format:
+  html:
+    embed-resources: true
+    smooth-scroll: true
+    toc: true
+    toc-depth: 4
+    toc-location: right
+    number-sections: true
+    code-fold: true
+    theme: cosmo
+    fig-cap-location: bottom
+execute:
+  warning: false
+  message: false
+engine: jupyter
+jupyter: python3
+---
+
+[Versión en español](stage4.html)
+
+# Summary
+
+This document analyzes the **complete 2009–2026 series** of the Monthly Statistical
+Summaries (REM-A03, breastfeeding section for children under routine health supervision)
+from DEIS-MINSAL, at the **national and municipal** scale (~77.5 million original
+records, aggregated to a municipality×month×year panel). Unlike the previous stages
+(restricted to the Metropolitan Region and to 2019–2024), this stage addresses:
+
+1. **Longitudinal harmonization** of 18 years of REM forms with a changing column
+   structure, validated against the official code dictionaries of each year and with
+   territorial harmonization to the current municipal coding (creation of the Ñuble
+   Region, 2018).
+2. **National time series**: trend, seasonality (STL), breakpoints (PELT)
+   and interrupted time series (ITS) analysis of the effect of the COVID-19 pandemic.
+3. **National geospatial analysis**: empirical Bayes smoothing of municipal rates,
+   global spatial autocorrelation (Moran's I with permutation inference) and its
+   evolution 2009–2024, local clusters (LISA) with multiple-comparison
+   correction (FDR), and spatial regression models (spatial lag and spatial error).
+4. **Territorial inequality**: weighted Gini and Theil indices (with between/within
+   region decomposition) and sigma convergence.
+5. **Panel models**: binomial models with municipality-clustered errors, and **gaps** by
+   sex (2017–2022) and among Indigenous peoples and migrants (2021+).
+
+**Main indicator**: prevalence of exclusive breastfeeding (EBF) at the 6th-month
+well-child check-up — EBF₆ = children with EBF at the 6th month (code A0200002) ÷
+children attending the 6th-month check-up (code A0200001) — available continuously
+across the 18 years of the series. Also analyzed are the other check-up ages (1st,
+3rd, 12th and 24th month), **continued breastfeeding** at one and two years (WHO
+indicator), EBF **retention** between the 1st and 6th month, the **full composition
+of feeding types** (2017+), the **neonatal dyads** (2023+) and the gaps by sex,
+Indigenous peoples and migrants.
+
+# Data and methods
+
+## Source and panel construction
+
+The microdata come from the DEIS open files `SerieA_{year}.csv` (downloaded and
+normalized with `download_rem.py`). The script `etl_lactancia.py` filters the
+service codes of the breastfeeding section of REM-A03 and aggregates at the
+(year, month, municipality, code) level, keeping the raw columns `Col01–Col20`. The
+column→meaning correspondence **changes across years**; it was extracted from the
+official code dictionaries of each year (18 DEIS Excel files, validated against
+the empirical pattern of populated columns) and is recorded in
+`docs/mapeo_columnas_rem.json` (see Annex).
+
+Four form eras:
+
+| Era | Years | Structure of the breastfeeding section |
+|---|---|---|
+| I | 2009–2013 | 4 columns: 1st-, 3rd-, 6th- and 12th-month check-ups |
+| II | 2014–2016 | 5 columns: + 24th-month check-up |
+| III | 2017–2022 | 13–15 columns: totals and ages disaggregated by sex; from 2021 + Indigenous peoples and migrants |
+| IV | 2023–2026 | 9–10 columns: total, neonatal dyads, ages, Indigenous peoples, migrants |
+
+Denominators are the **children attending the well-child check-up at the respective
+month of age** (code A0200001), not population cohorts: prevalences are interpreted
+as proportions among those attending check-ups (see Limitations).
+
+## Statistical methods
+
+- **Confidence intervals**: 95% Wilson intervals for proportions.
+- **Seasonality and trend**: STL decomposition (12-month periods).
+- **Breakpoints**: PELT detection (`ruptures`, RBF model) on the seasonally adjusted
+  monthly series, penalty 3·log(n), with sensitivity analysis.
+- **Interrupted time series (ITS)**: segmented regression
+  y(t) = β₀ + β₁·t + β₂·COVID(t) + β₃·(t − t₀)·COVID(t) + seasonal harmonics + ε(t),
+  with t₀ = March 2020 and Newey–West errors (12 lags). Since PELT detects a
+  structural break in 2015, the pre-intervention window is restricted to the
+  post-break regime (January 2015–February 2020), so that the counterfactual does not
+  extrapolate a slope averaged across distinct regimes. The estimate is interpreted
+  as an **interruption associated** with the pandemic, not as a pure causal effect: in
+  2020 the national denominator of check-ups fell by ~37%, so numerator and
+  denominator are measured on a selected subpopulation of attendees.
+- **Smoothing of municipal rates**: global empirical Bayes estimator (Marshall's
+  method of moments), which shrinks the rates of municipalities with small
+  denominators toward the national mean.
+- **Spatial weights**: *Queen* contiguity with topological tolerance (250 m buffer
+  before assessing adjacency), needed because the shapefile has digitization gaps
+  that turn mainland municipalities into false islands (e.g., Huara, Timaukel); true
+  islands (Easter Island, Juan Fernández) are connected to their nearest neighbor
+  (KNN-1); row standardization. The W matrix is rebuilt each year with the reporting
+  municipalities, so its composition varies slightly across years.
+- **Global autocorrelation**: Moran's I with **permutation** inference (999),
+  year by year on smoothed rates. EB smoothing shrinks small municipalities
+  differentially (often clustered in rural areas), which can alter the
+  autocorrelation; as a sensitivity check, Moran's I on the crude rate and the
+  Assunção–Reis rate statistic (`Moran_Rate`) are reported.
+- **Local clusters**: LISA (local Moran, 9,999 permutations). Two significance
+  criteria are reported: the conventional one (p ≤ 0.05, by permutations) and the
+  conservative one controlling the false discovery rate (**FDR**) for the ~340
+  simultaneous tests; the contrast between the two is discussed explicitly.
+- **Spatial regression** (cross-section of the last complete year): comparison of
+  OLS with LM diagnostics, spatial lag model (ML-Lag) and spatial error model
+  (ML-Error) by maximum likelihood (`spreg`).
+- **Inequality**: denominator-weighted Gini; Theil with between-region /
+  within-region decomposition; weighted p90/p10 ratio.
+- **Panel**: binomial GLM (successes, failures) with year and region fixed effects
+  and municipality-clustered standard errors.
+
+Data for **2026 are preliminary** (year in progress) and **2025 is still being
+consolidated** at DEIS (~274 of 337 municipalities reporting at download time);
+both are shown in the descriptive series duly flagged, but **models and spatial
+inference use 2009–2024**, with 2024 as the cross-section.
+
+```{python}
+#| label: setup
+#| code-summary: "Setup, palettes and data loading"
+import json
+import warnings
+from pathlib import Path
+
+from IPython.display import Markdown, display
+import geopandas as gpd
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import libpysal
+import esda
+import spreg
+import ruptures as rpt
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+from matplotlib.colors import LinearSegmentedColormap, ListedColormap
+from statsmodels.stats.proportion import proportion_confint
+from statsmodels.tsa.seasonal import STL
+
+warnings.filterwarnings("ignore")
+np.random.seed(20260707)
+SEED = 20260707
+
+RAIZ = Path("..").resolve()
+DATA = RAIZ / "data"
+OUT = RAIZ / "output_files" / "stage4_en"
+OUT.mkdir(parents=True, exist_ok=True)
+
+# --- palette (validated system; see visualization skill) ---
+PAL = ["#2a78d6", "#1baf7a", "#eda100", "#008300",
+       "#4a3aa7", "#e34948", "#e87ba4", "#eb6834"]   # categorical, fixed order
+SEQ_STEPS = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5",
+             "#256abf", "#1c5cab", "#104281"]          # sequential light→dark blue
+CMAP_SEQ = LinearSegmentedColormap.from_list("seq_azul", SEQ_STEPS)
+CMAP_DIV = LinearSegmentedColormap.from_list(
+    "div_azul_rojo", ["#104281", "#3987e5", "#f0efec", "#e34948", "#8f1f1f"])
+INK, INK2, MUT, GRID = "#0b0b0b", "#52514e", "#898781", "#e1e0d9"
+COL_LISA = {"HH": "#e34948", "LL": "#2a78d6", "LH": "#9ec5f4",
+            "HL": "#f4a9a8", "ns": "#e1e0d9"}
+
+mpl.rcParams.update({
+    "font.family": "sans-serif", "font.size": 10,
+    "axes.edgecolor": MUT, "axes.labelcolor": INK2, "axes.titlecolor": INK,
+    "axes.grid": True, "grid.color": GRID, "grid.linewidth": 0.6,
+    "xtick.color": MUT, "ytick.color": MUT,
+    "axes.spines.top": False, "axes.spines.right": False,
+    "figure.dpi": 130, "savefig.dpi": 150, "figure.facecolor": "white",
+})
+
+# --- data ---
+panel = pd.read_parquet(DATA / "procesados" / "panel_lactancia.parquet")
+mapeo = json.loads((RAIZ / "docs" / "mapeo_columnas_rem.json").read_text())
+crosswalk = json.loads((RAIZ / "docs" / "crosswalk_comunas.json").read_text())
+qc_etl = json.loads((DATA / "procesados" / "panel_lactancia_qc.json").read_text())
+
+def nota(texto):
+    """Note rendered as Markdown (avoids plain-text output)."""
+    display(Markdown(f"> {texto}"))
+
+
+# --- download buttons --------------------------------------------------------
+import base64
+import io as _io
+from IPython.display import HTML
+
+RECURSOS = Path("stage4_recursos_en")         # relative to docs/ (next to the HTML)
+FIG600 = RECURSOS / "figuras_600dpi"
+TABLAS_DIR = RECURSOS / "tablas"
+FIG600.mkdir(parents=True, exist_ok=True)
+TABLAS_DIR.mkdir(parents=True, exist_ok=True)
+
+_BTN = ("display:inline-block;margin:4px 6px 14px 0;padding:4px 12px;"
+        "font-size:0.8rem;border:1px solid #2a78d6;border-radius:6px;"
+        "color:#2a78d6;text-decoration:none;background:#fff;")
+
+
+def boton_figura(fig, nombre, dpi=600):
+    """Saves the figure as a high-resolution PNG and shows a download button.
+
+    The (heavy) PNG is served from stage4_recursos_en/ next to the HTML; the
+    document itself remains self-contained.
+    """
+    ruta = FIG600 / f"{nombre}.png"
+    fig.savefig(ruta, dpi=dpi, bbox_inches="tight", facecolor="white")
+    display(HTML(
+        f'<a style="{_BTN}" href="{RECURSOS.name}/figuras_600dpi/{nombre}.png" '
+        f'download="{nombre}.png">&#8681; Download figure (PNG {dpi} dpi)</a>'))
+
+
+def boton_tabla(df, nombre):
+    """Displays the table plus a download button with the Excel embedded in the HTML."""
+    display(df)
+    buf = _io.BytesIO()
+    df_x = df.copy()
+    df_x.to_excel(buf, sheet_name=nombre[:31], engine="openpyxl")
+    (TABLAS_DIR / f"{nombre}.xlsx").write_bytes(buf.getvalue())
+    b64 = base64.b64encode(buf.getvalue()).decode()
+    display(HTML(
+        f'<a style="{_BTN}" download="{nombre}.xlsx" '
+        'href="data:application/vnd.openxmlformats-officedocument.'
+        f'spreadsheetml.sheet;base64,{b64}">&#8681; Download table (Excel)</a>'))
+
+shp = gpd.read_file(DATA / "comunas.shp")
+shp["IdComuna"] = shp["cod_comuna"].astype(int).map(lambda c: f"{c:05d}")
+shp = shp[shp["codregion"].between(1, 16)].copy()
+
+# territorial harmonization: old codes -> current coding
+panel = panel.dropna(subset=["IdComuna"]).copy()
+panel = panel[panel["IdComuna"] != ""]
+panel["IdComuna"] = panel["IdComuna"].replace(crosswalk)
+panel["region"] = panel["IdComuna"].str[:2].astype(int)
+
+NOMBRES_REGION = {
+    1: "Tarapacá", 2: "Antofagasta", 3: "Atacama", 4: "Coquimbo",
+    5: "Valparaíso", 6: "O'Higgins", 7: "Maule", 8: "Biobío",
+    9: "La Araucanía", 10: "Los Lagos", 11: "Aysén", 12: "Magallanes",
+    13: "Metropolitana", 14: "Los Ríos", 15: "Arica y Parinacota", 16: "Ñuble",
+}
+COD_DEN, COD_LME, COD_LMC = "A0200001", "A0200002", "A0200003"
+EDADES = ["1m", "3m", "6m", "12m", "24m"]
+ETIQ_EDAD = {"1m": "1st month", "3m": "3rd month", "6m": "6th month",
+             "12m": "12th month", "24m": "24th month"}
+ULTIMO_COMPLETO = 2024   # last year with complete municipal coverage and consolidated data
+                         # (2025 still being consolidated at DEIS: ~274/337 municipalities; 2026 preliminary)
+
+nota(f"**Input panel**: {len(panel):,} rows | current municipalities: "
+     f"{panel['IdComuna'].nunique()} | shapefile: {len(shp)} municipalities.")
+```
+
+```{python}
+#| label: armonizacion
+#| code-summary: "Harmonization: raw columns → indicators by age at check-up"
+def sumar_cols(df, cols):
+    presentes = [c for c in cols if c in df.columns]
+    return df[presentes].sum(axis=1) if presentes else pd.Series(0.0, index=df.index)
+
+registros = []
+for anio_str, info in mapeo.items():
+    anio = int(anio_str)
+    sub = panel[panel["Ano"] == anio]
+    if sub.empty:
+        continue
+    for codigo, cfg in info["codigos"].items():
+        s = sub[sub["CodigoPrestacion"] == codigo]
+        if s.empty:
+            continue
+        base = s[["Ano", "Mes", "IdComuna", "region", "n_establecimientos"]].copy()
+        for edad, cols in cfg["edad_cols"].items():
+            base[edad] = sumar_cols(s, cols)
+        for extra, key in [("po_cols", "po"), ("mig_cols", "mig"), ("total_cols", "total")]:
+            if cfg.get(extra):
+                base[key] = sumar_cols(s, cfg[extra])
+        # neonatal dyads (era IV): ≤10 days and 11–28 days of life
+        for dkey, dcols in cfg.get("diada_cols", {}).items():
+            base[dkey] = sumar_cols(s, dcols)
+        # sex (era III)
+        for sexo in ("H", "M"):
+            for edad, cols in cfg.get("sexo_cols", {}).get(sexo, {}).items():
+                base[f"{edad}_{sexo}"] = sumar_cols(s, cols)
+        base["codigo"] = codigo
+        registros.append(base)
+
+arm = pd.concat(registros, ignore_index=True)
+
+def tabla_indicador(codigo, columnas):
+    """Annual (or monthly) sum by municipality for a given code and columns."""
+    t = arm[arm["codigo"] == codigo]
+    return t.groupby(["Ano", "Mes", "IdComuna", "region"])[columnas].sum().reset_index()
+
+cols_num = [c for c in arm.columns if c not in
+            ("Ano", "Mes", "IdComuna", "region", "codigo", "n_establecimientos")]
+den = tabla_indicador(COD_DEN, cols_num).rename(columns={c: f"den_{c}" for c in cols_num})
+num = tabla_indicador(COD_LME, cols_num).rename(columns={c: f"lme_{c}" for c in cols_num})
+lmc = tabla_indicador(COD_LMC, cols_num).rename(columns={c: f"lmc_{c}" for c in cols_num})
+
+cm = (den.merge(num, on=["Ano", "Mes", "IdComuna", "region"], how="outer")
+         .merge(lmc, on=["Ano", "Mes", "IdComuna", "region"], how="outer")
+         .fillna(0.0))
+
+# Consistency QC: the numerator cannot exceed the denominator. Isolated violations
+# exist in the raw data (facility data-entry errors); they are truncated to the
+# denominator (num := min(num, den)) and the magnitude is reported.
+recortes = 0
+for c in cols_num:
+    denc = f"den_{c}"
+    for pref in ("lme", "lmc"):
+        col = f"{pref}_{c}"
+        if col in cm.columns:
+            exceso = cm[col] > cm[denc]
+            recortes += int(exceso.sum())
+            cm.loc[exceso, col] = cm.loc[exceso, denc]
+nota(f"**Harmonized municipality-month panel**: {len(cm):,} rows, "
+     f"{cm['IdComuna'].nunique()} municipalities, {cm['Ano'].min()}–{cm['Ano'].max()}. "
+     f"Municipality-month cells truncated because numerator > denominator: **{recortes:,}** "
+     f"(recording error at source; see Limitations).")
+```
+
+## Quality control and coverage {#sec-qc}
+
+```{python}
+#| label: qc
+#| code-summary: "Panel coverage by year"
+#| tbl-cap: "Series coverage: reporting municipalities, 6th-month check-ups and available months"
+qc = (cm.groupby("Ano")
+        .agg(comunas=("IdComuna", "nunique"),
+             meses=("Mes", "nunique"),
+             controles_6m=("den_6m", "sum"),
+             lme_6m=("lme_6m", "sum"))
+        .assign(prev_lme6=lambda d: 100 * d["lme_6m"] / d["controles_6m"])
+        .round(1))
+qc["nota"] = ""
+qc.loc[2025, "nota"] = "being consolidated (partial municipal coverage)"
+qc.loc[2026, "nota"] = "preliminary (year in progress)"
+qc.columns = ["Municipalities", "Months", "6th-month check-ups", "EBF 6th month", "EBF₆ (%)", "Note"]
+boton_tabla(qc, "cobertura_anual")
+```
+
+Municipal coverage is ~302 reporting municipalities in 2009 and stabilizes at
+~337–341 from 2010 **through 2024**; in 2025 the number of reporting municipalities
+drops because DEIS is still consolidating that year, and 2026 is preliminary. For
+this reason inference is restricted to 2009–2024 (and the panel model uses 2010,
+the first year of complete coverage, as the reference year). Additionally, a small
+number of municipality-month cells have numerators larger than their denominator
+(recording error at source); those cells are truncated to the denominator and
+their count is reported in the harmonization chunk.
+
+# National series, 2009–2026
+
+## Annual prevalence by age at check-up
+
+```{python}
+#| label: fig-nacional-anual
+#| code-summary: "Annual national series with Wilson CIs"
+#| fig-cap: "National prevalence of exclusive breastfeeding by age at check-up, 2009–2026. Bands: 95% Wilson CIs (imperceptible given the sample size). Shaded area: 2025 (being consolidated) and 2026 (preliminary). The 12th and 24th months are omitted, since EBF is ≈0 there by definition (complementary feeding begins at 6 months)."
+nac = cm.groupby("Ano")[[f"lme_{e}" for e in EDADES] + [f"den_{e}" for e in EDADES]].sum()
+EDADES_FIG = ["1m", "3m", "6m"]  # 12m/24m: EBF ≈ 0 by definition
+
+fig, ax = plt.subplots(figsize=(9.5, 5.2))
+ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+for i, e in enumerate(EDADES_FIG):
+    n, d = nac[f"lme_{e}"], nac[f"den_{e}"]
+    validos = d > 0
+    p = 100 * n[validos] / d[validos]
+    lo, hi = proportion_confint(n[validos], d[validos], method="wilson")
+    ax.plot(p.index, p.values, color=PAL[i], lw=2, marker="o", ms=4,
+            label=ETIQ_EDAD[e])
+    ax.fill_between(p.index, 100 * lo, 100 * hi, color=PAL[i], alpha=0.15, lw=0)
+    ax.annotate(ETIQ_EDAD[e], (p.index[-1], p.values[-1]),
+                xytext=(6, 0), textcoords="offset points",
+                color=PAL[i], fontsize=9, va="center")
+ax.axvspan(2024.5, 2026.5, color=GRID, alpha=0.35, zorder=0)
+ax.set_xlim(2008.5, 2027.6)
+ax.set_ylabel("EBF (% of children attending check-ups)")
+ax.set_xlabel("Year")
+ax.set_title("Exclusive breastfeeding in Chile by age at check-up, 2009–2026")
+ax.legend(loc="upper right", frameon=False, ncols=2)
+plt.tight_layout()
+nac_pct = pd.DataFrame({e: 100 * nac[f"lme_{e}"] / nac[f"den_{e}"].replace(0, np.nan)
+                        for e in EDADES}).round(2)
+nac_pct.to_csv(OUT / "lme_nacional_anual.csv")
+plt.show()
+boton_figura(fig, "nacional_anual")
+```
+
+## Continued breastfeeding at one and two years (approximation to the WHO indicator)
+
+EBF is only a goal up to the 6th month; from then on the WHO reference indicator is
+**continued breastfeeding** together with complementary feeding. It is defined here
+as (A0200002 + A0200003) ÷ A0200001 at the 12th-month check-up (full series) and at
+the 24th-month check-up (available since 2014). This definition excludes children
+with mixed feeding including formula and is therefore a **lower bound**, but it is
+**not comparable across 2021**: that year the form created the BF + formula +
+complementary category (03600140) and some of the children previously recorded
+under A0200003 migrated to it — the post-2021 drop of the "no formula" series is
+largely re-coding, as shown by the stability of the **extended** version (which
+incorporates the formula codes, available since 2021). The measure is computed on
+children attending check-ups in the public system, so it is an approximation to the
+WHO indicator, not a population estimate.
+
+```{python}
+#| label: fig-continuada
+#| code-summary: "Continued breastfeeding at the 12th and 24th month"
+#| fig-cap: "Continued breastfeeding (no formula) at the 12th month (2009–2026) and the 24th month (2014–2026), plus the extended version including mixed-feeding codes (2021+). The 'no formula' series are NOT comparable across 2021 (dotted line): the creation of the BF+formula+complementary category re-coded part of A0200003. Shaded area: 2025 being consolidated and 2026 preliminary."
+lc = cm.groupby("Ano")[["lme_12m", "lmc_12m", "den_12m",
+                        "lme_24m", "lmc_24m", "den_24m"]].sum()
+lc12 = 100 * (lc["lme_12m"] + lc["lmc_12m"]) / lc["den_12m"]
+lc24 = (100 * (lc["lme_24m"] + lc["lmc_24m"])
+        / lc["den_24m"].replace(0, np.nan)).dropna()
+
+# extended version 2021+: includes BF/formula (03500359) and BF/formula/solids (03600140)
+mix = {}
+for cod in ("03500359", "03600140"):
+    t = arm[arm["codigo"] == cod].groupby("Ano")[["12m"]].sum()
+    mix[cod] = t["12m"]
+mix_df = pd.DataFrame(mix).reindex(lc.index).fillna(0)
+lc12_amp = (100 * (lc["lme_12m"] + lc["lmc_12m"] + mix_df.sum(axis=1))
+            / lc["den_12m"]).loc[2021:]
+
+fig, ax = plt.subplots(figsize=(9.5, 4.8))
+ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+ax.plot(lc12.index, lc12.values, color=PAL[0], lw=2, marker="o", ms=4,
+        label="12th month (no formula)")
+ax.plot(lc24.index, lc24.values, color=PAL[1], lw=2, marker="s", ms=4,
+        label="24th month (no formula)")
+ax.plot(lc12_amp.index, lc12_amp.values, color=PAL[0], lw=1.6, ls="--", marker="o",
+        ms=3, label="12th month (incl. mixed, 2021+)")
+ax.axvline(2021, color=INK2, lw=1, ls=":")
+ax.annotate("form change", (2021, ax.get_ylim()[1] * 0.97), color=INK2,
+            fontsize=8, ha="center", va="top")
+ax.axvspan(2024.5, 2026.5, color=GRID, alpha=0.35, zorder=0)
+ax.set_ylabel("Continued breastfeeding (% of those in check-ups)")
+ax.set_xlabel("Year")
+ax.set_title("Continued breastfeeding at one and two years, 2009–2026")
+ax.legend(frameon=False)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "continuada")
+pd.DataFrame({"LC_12m": lc12, "LC_24m": lc24, "LC_12m_ampliada": lc12_amp}
+             ).round(2).to_csv(OUT / "lactancia_continuada_nacional.csv")
+```
+
+## EBF retention between the 1st and 6th month
+
+```{python}
+#| label: fig-retencion
+#| code-summary: "National EBF retention, 1st → 6th month"
+#| fig-cap: "EBF retention: ratio of the prevalence at the 3rd/6th month to that at the 1st month, by year. A value of 0.8 at the 6th month indicates that 80% of the initial prevalence is retained. Shaded area: provisional years."
+ret_nac = pd.DataFrame({
+    e: 100 * nac[f"lme_{e}"] / nac[f"den_{e}"] for e in ("1m", "3m", "6m")})
+ret_nac["ret_6_1"] = ret_nac["6m"] / ret_nac["1m"]
+ret_nac["ret_3_1"] = ret_nac["3m"] / ret_nac["1m"]
+
+fig, ax = plt.subplots(figsize=(9.5, 4.4))
+ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+ax.plot(ret_nac.index, ret_nac["ret_3_1"], color=PAL[1], lw=2, marker="s", ms=4,
+        label="3rd/1st month")
+ax.plot(ret_nac.index, ret_nac["ret_6_1"], color=PAL[0], lw=2, marker="o", ms=4,
+        label="6th/1st month")
+ax.axvspan(2024.5, 2026.5, color=GRID, alpha=0.35, zorder=0)
+ax.set_ylabel("EBF retention ratio")
+ax.set_xlabel("Year")
+ax.set_title("EBF retention across check-ups, 2009–2026")
+ax.legend(frameon=False)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "retencion")
+nota("The 6th/1st-month ratio compares **different children** at each check-up "
+     "(synthetic cohort, not individual follow-up). It went from "
+     f"{ret_nac['ret_6_1'].loc[2009]:.2f} (2009) to "
+     f"{ret_nac['ret_6_1'].loc[2019]:.2f} (2019) and "
+     f"{ret_nac['ret_6_1'].loc[ULTIMO_COMPLETO]:.2f} ({ULTIMO_COMPLETO}). The jump is "
+     "concentrated at the 2015 recording break, so part of the increase is "
+     "attributable to the form change and not only to better maintenance. After 2019 "
+     "retention remains high while the **initial level** (EBF at the 1st month) "
+     "keeps declining: the recent problem lies in EBF initiation, not in its "
+     "maintenance.")
+```
+
+## Seasonality, trend and breakpoints
+
+```{python}
+#| label: fig-stl
+#| code-summary: "Monthly series of EBF at the 6th month: STL and structural breaks (PELT)"
+#| fig-cap: "National monthly series of EBF at the 6th month: STL decomposition (trend and seasonality) and breakpoints detected by PELT on the seasonally adjusted series (vertical lines). Series 2009–2024 (2025 being consolidated and 2026 preliminary are excluded)."
+mens = (cm[cm["Ano"] <= ULTIMO_COMPLETO]
+        .groupby(["Ano", "Mes"])[["lme_6m", "den_6m"]].sum().reset_index())
+mens["fecha"] = pd.to_datetime(dict(year=mens["Ano"], month=mens["Mes"], day=1))
+mens = mens.set_index("fecha").sort_index()
+mens["p6"] = 100 * mens["lme_6m"] / mens["den_6m"]
+
+stl = STL(mens["p6"], period=12, robust=True).fit()
+desest = mens["p6"] - stl.seasonal
+
+# PELT with jump=1 (monthly resolution); the break is dated at the FIRST month of
+# the new regime. Penalty sensitivity: pen = k·log(n), k=1..3 are reported.
+algo = rpt.Pelt(model="rbf", jump=1).fit(desest.values.reshape(-1, 1))
+sens_pen = {}
+for k in (1, 2, 3):
+    b = algo.predict(pen=k * np.log(len(desest)))
+    sens_pen[k] = [desest.index[i].strftime("%Y-%m") for i in b[:-1]]
+bkps = algo.predict(pen=3 * np.log(len(desest)))
+fechas_quiebre = [desest.index[i] for i in bkps[:-1]]
+
+fig, axes = plt.subplots(3, 1, figsize=(9.5, 7.5), sharex=True,
+                         gridspec_kw={"height_ratios": [2, 1, 1]})
+axes[0].plot(mens.index, mens["p6"], color=GRID, lw=1, label="Observed")
+axes[0].plot(stl.trend.index, stl.trend, color=PAL[0], lw=2.2, label="STL trend")
+for f in fechas_quiebre:
+    axes[0].axvline(f, color=PAL[5], lw=1.2, ls="--")
+    axes[0].annotate(f.strftime("%Y-%m"), (f, axes[0].get_ylim()[1]),
+                     xytext=(3, -12), textcoords="offset points",
+                     color=PAL[5], fontsize=8)
+axes[0].set_ylabel("EBF₆ (%)")
+axes[0].legend(frameon=False, loc="lower left")
+axes[0].set_title("EBF at the 6th month: monthly series, trend and structural breaks")
+axes[1].plot(stl.seasonal.index, stl.seasonal, color=PAL[1], lw=1.2)
+axes[1].set_ylabel("Seasonal")
+axes[2].plot(stl.resid.index, stl.resid, color=MUT, lw=0.8)
+axes[2].set_ylabel("Remainder")
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "stl")
+sens_txt = "; ".join(f"pen = {k}·log(n): {', '.join(v) if v else 'none'}"
+                     for k, v in sens_pen.items())
+nota(f"**Detected breaks** (pen = 3·log n): "
+     f"{', '.join(f.strftime('%Y-%m') for f in fechas_quiebre)}. "
+     f"Sensitivity — {sens_txt}. The 2015 break is robust to the penalty; "
+     f"those of 2017 and late 2020 only appear under the laxest penalty.")
+```
+
+## Pandemic effect: interrupted time series analysis
+
+```{python}
+#| label: its
+#| code-summary: "ITS with Newey–West errors"
+# window: post-structural-break regime (2015-01) through 2024-12
+its = mens.loc["2015-01-01":].reset_index().copy()
+its["t"] = np.arange(len(its))
+t0 = int(its.index[its["fecha"] == "2020-03-01"][0])
+its["covid"] = (its["t"] >= t0).astype(int)
+its["t_post"] = (its["t"] - t0).clip(lower=0)
+for k in (1, 2):
+    its[f"sin{k}"] = np.sin(2 * np.pi * k * its["t"] / 12)
+    its[f"cos{k}"] = np.cos(2 * np.pi * k * its["t"] / 12)
+
+X = sm.add_constant(its[["t", "covid", "t_post", "sin1", "cos1", "sin2", "cos2"]])
+mod_its = sm.OLS(its["p6"], X).fit(cov_type="HAC", cov_kwds={"maxlags": 12})
+
+res_its = pd.DataFrame({
+    "Coefficient": mod_its.params, "SE (NW)": mod_its.bse,
+    "CI 2.5%": mod_its.conf_int()[0], "CI 97.5%": mod_its.conf_int()[1],
+    "p": mod_its.pvalues,
+}).loc[["const", "t", "covid", "t_post"]].round(3)
+res_its.index = ["Baseline level (%)", "Pre-COVID trend 2015–Feb 2020 (pp/month)",
+                 "COVID level change (pp)", "COVID slope change (pp/month)"]
+boton_tabla(res_its, "its_lme6")
+```
+
+```{python}
+#| label: fig-its
+#| code-summary: "Observed vs. counterfactual"
+#| fig-cap: "Interrupted time series analysis on the post-break regime (January 2015–December 2024): observed EBF at the 6th month and counterfactual (projection of the January 2015–February 2020 regime). Newey–West errors (12 lags). The counterfactual is a linear extrapolation and should be read with increasing caution at longer horizons."
+X_cf = X.copy()
+X_cf[["covid", "t_post"]] = 0
+pred_cf = mod_its.predict(X_cf)
+pred_obs = mod_its.predict(X)
+
+fig, ax = plt.subplots(figsize=(9.5, 4.8))
+ax.plot(its["fecha"], its["p6"], color=GRID, lw=1, label="Observed")
+ax.plot(its["fecha"], pred_obs, color=PAL[0], lw=2, label="ITS fit")
+ax.plot(its["fecha"][t0:], pred_cf[t0:], color=PAL[5], lw=2, ls="--",
+        label="COVID-free counterfactual")
+ax.axvline(its["fecha"][t0], color=MUT, lw=1, ls=":")
+ax.annotate("Mar-2020", (its["fecha"][t0], ax.get_ylim()[0]),
+            xytext=(4, 6), textcoords="offset points", color=MUT, fontsize=9)
+ax.set_ylabel("EBF₆ (%)")
+ax.legend(frameon=False, loc="lower left")
+ax.set_title("Impact of the pandemic on EBF at the 6th month (ITS)")
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "its")
+
+efecto_24m = (pred_obs - pred_cf).iloc[t0 + 24] if t0 + 24 < len(its) else np.nan
+nota(f"**Estimated gap 24 months** after the start of the pandemic: **{efecto_24m:+.1f} pp**. "
+     "This is an *interruption associated* with the pandemic, not interpretable as "
+     "a pure causal effect: the denominator of check-ups fell by ~37% in 2020 "
+     "(selection of the attending subpopulation).")
+```
+
+## Pandemic effect by age at check-up
+
+```{python}
+#| label: its-edades
+#| code-summary: "ITS replicated for the 1st, 3rd and 6th month"
+#| tbl-cap: "Interrupted time series analysis by age at check-up (baseline regime January 2015–February 2020, Newey–West errors): level and slope changes associated with the pandemic, and gap relative to the counterfactual at 24 months."
+def its_por_edad(edad):
+    m = (cm[cm["Ano"] <= ULTIMO_COMPLETO]
+         .groupby(["Ano", "Mes"])[[f"lme_{edad}", f"den_{edad}"]].sum().reset_index())
+    m["fecha"] = pd.to_datetime(dict(year=m["Ano"], month=m["Mes"], day=1))
+    m = m.set_index("fecha").sort_index().loc["2015-01-01":]
+    m["p"] = 100 * m[f"lme_{edad}"] / m[f"den_{edad}"]
+    m = m.reset_index()
+    m["t"] = np.arange(len(m))
+    t0e = int(m.index[m["fecha"] == "2020-03-01"][0])
+    m["covid"] = (m["t"] >= t0e).astype(int)
+    m["t_post"] = (m["t"] - t0e).clip(lower=0)
+    for k in (1, 2):
+        m[f"sin{k}"] = np.sin(2 * np.pi * k * m["t"] / 12)
+        m[f"cos{k}"] = np.cos(2 * np.pi * k * m["t"] / 12)
+    Xe = sm.add_constant(m[["t", "covid", "t_post", "sin1", "cos1", "sin2", "cos2"]])
+    me = sm.OLS(m["p"], Xe).fit(cov_type="HAC", cov_kwds={"maxlags": 12})
+    Xcf = Xe.copy(); Xcf[["covid", "t_post"]] = 0
+    pred_cf24 = me.predict(Xcf).iloc[t0e + 24]
+    brecha = (me.predict(Xe) - me.predict(Xcf)).iloc[t0e + 24]
+    ci_e = me.conf_int()
+    return {
+        "Age": ETIQ_EDAD[edad],
+        "COVID level (pp)": me.params["covid"],
+        "Level CI": f"[{ci_e.loc['covid', 0]:.1f}; {ci_e.loc['covid', 1]:.1f}]",
+        "COVID slope (pp/month)": me.params["t_post"],
+        "Slope CI": f"[{ci_e.loc['t_post', 0]:.3f}; {ci_e.loc['t_post', 1]:.3f}]",
+        "Gap at 24 months (pp)": brecha,
+        "Relative gap (%)": 100 * brecha / pred_cf24,
+    }
+
+its_tab = pd.DataFrame([its_por_edad(e) for e in ("1m", "3m", "6m")]).set_index("Age")
+boton_tabla(its_tab.round(2), "its_por_edad")
+```
+
+The pandemic interruption was not homogeneous across ages: the table allows comparing
+whether the blow was concentrated in breastfeeding initiation (1st month, more tied
+to perinatal care) or in its maintenance (6th month, more tied to outpatient
+follow-up). The comparison across ages should be read with caution: baseline levels
+and the magnitude of the 2020 denominator drop differ by age (different selection of
+attendees), so the **relative gap** versus the counterfactual is the most
+comparable column.
+
+# Regional trajectories and convergence
+
+```{python}
+#| label: fig-regiones
+#| code-summary: "Regional small multiples"
+#| fig-cap: "EBF at the 6th month by region, 2009–2024 (blue line), with the national reference trajectory (gray). Territorial coding harmonized to 16 regions."
+reg = (cm[cm["Ano"] <= ULTIMO_COMPLETO]
+       .groupby(["Ano", "region"])[["lme_6m", "den_6m"]].sum().reset_index())
+reg["p6"] = 100 * reg["lme_6m"] / reg["den_6m"]
+nac_serie = (cm[cm["Ano"] <= ULTIMO_COMPLETO]
+             .groupby("Ano")[["lme_6m", "den_6m"]].sum())
+nac_serie = 100 * nac_serie["lme_6m"] / nac_serie["den_6m"]
+
+orden_reg = [15, 1, 2, 3, 4, 5, 13, 6, 7, 16, 8, 9, 14, 10, 11, 12]  # north→south
+fig, axes = plt.subplots(4, 4, figsize=(11, 9), sharex=True, sharey=True)
+for ax, r in zip(axes.flat, orden_reg):
+    s = reg[reg["region"] == r]
+    ax.plot(nac_serie.index, nac_serie.values, color=GRID, lw=1.4)
+    ax.plot(s["Ano"], s["p6"], color=PAL[0], lw=1.8)
+    ax.set_title(NOMBRES_REGION[r], fontsize=9.5, color=INK)
+    ax.grid(True, lw=0.4)
+fig.supylabel("EBF₆ (%)", color=INK2)
+fig.suptitle("Regional trajectories of EBF at the 6th month, 2009–2024 (north→south order)", y=0.995)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "regiones")
+```
+
+```{python}
+#| label: fig-convergencia
+#| code-summary: "Sigma convergence across municipalities and regions"
+#| fig-cap: "Sigma convergence: year-to-year dispersion of EBF at the 6th month across regions (simple SD) and across municipalities (denominator-weighted SD). A negative slope indicates territorial convergence."
+def de_ponderada(x, w):
+    m = np.average(x, weights=w)
+    return np.sqrt(np.average((x - m) ** 2, weights=w))
+
+com_anual = cm.groupby(["Ano", "IdComuna"])[["lme_6m", "den_6m"]].sum().reset_index()
+com_anual = com_anual[(com_anual["den_6m"] >= 30) & (com_anual["Ano"] <= ULTIMO_COMPLETO)]
+com_anual["p6"] = 100 * com_anual["lme_6m"] / com_anual["den_6m"]
+
+sigma_com = com_anual.groupby("Ano").apply(
+    lambda d: de_ponderada(d["p6"], d["den_6m"]), include_groups=False)
+sigma_reg = reg.groupby("Ano").apply(
+    lambda d: d["p6"].std(), include_groups=False)
+
+fig, ax = plt.subplots(figsize=(9, 4.2))
+ax.plot(sigma_com.index, sigma_com.values, color=PAL[0], lw=2, marker="o", ms=4,
+        label="Across municipalities (weighted)")
+ax.plot(sigma_reg.index, sigma_reg.values, color=PAL[1], lw=2, marker="s", ms=4,
+        label="Across regions")
+ax.set_ylabel("Standard deviation of EBF₆ (pp)")
+ax.set_xlabel("Year")
+ax.set_title("Sigma convergence of EBF at the 6th month, 2009–2024")
+ax.legend(frameon=False)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "convergencia")
+```
+
+# National geospatial analysis
+
+## Municipal rates and empirical Bayes smoothing
+
+```{python}
+#| label: eb
+#| code-summary: "Empirical Bayes smoothing (Marshall) and join with the geometry"
+def eb_suavizar(num, den):
+    """Global EB estimator (Marshall's method of moments) for proportions."""
+    num, den = np.asarray(num, float), np.asarray(den, float)
+    p = num / den
+    m = num.sum() / den.sum()
+    s2 = np.average((p - m) ** 2, weights=den)
+    a = max(s2 - m * (1 - m) / (den.mean()), 0.0)
+    w = a / (a + m * (1 - m) / den) if a > 0 else np.zeros_like(den)
+    return w * p + (1 - w) * m
+
+def comunal_anual(anio, edad="6m"):
+    d = cm[cm["Ano"] == anio].groupby("IdComuna")[[f"lme_{edad}", f"den_{edad}"]].sum()
+    d.columns = ["lme_6m", "den_6m"]  # canonical names for the rest of the pipeline
+    d = d[d["den_6m"] > 0]
+    d["p6"] = 100 * d["lme_6m"] / d["den_6m"]
+    d["p6_eb"] = 100 * eb_suavizar(d["lme_6m"], d["den_6m"])
+    return d.reset_index()
+
+com25 = comunal_anual(ULTIMO_COMPLETO)
+gdf = shp.merge(com25, on="IdComuna", how="left")
+nota(f"**{ULTIMO_COMPLETO}**: {com25.shape[0]} municipalities with data; "
+     f"{gdf['p6'].isna().sum()} shapefile municipalities without data.")
+gdf_datos = gdf.dropna(subset=["p6_eb"]).reset_index(drop=True)
+```
+
+```{python}
+#| label: fig-mapa-nacional
+#| code-summary: "National choropleth map + Metropolitan Region"
+#| fig-cap: "EBF at the 6th month by municipality (empirical Bayes smoothed rates), 2024. Fisher–Jenks classification (6 classes), single-hue sequential ramp. Right panel: Metropolitan Region."
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.5, 10),
+                               gridspec_kw={"width_ratios": [1, 1.35]})
+gdf.plot(ax=ax1, column="p6_eb", cmap=CMAP_SEQ, scheme="fisherjenks", k=6,
+         edgecolor="white", linewidth=0.15,
+         missing_kwds={"color": GRID, "label": "No data"},
+         legend=True,
+         legend_kwds={"title": "EBF₆ (%) EB", "loc": "center left",
+                      "fontsize": 8, "title_fontsize": 9, "frameon": False})
+ax1.set_axis_off()
+ax1.set_title(f"Chile — EBF at the 6th month, {ULTIMO_COMPLETO}", fontsize=11)
+
+rm = gdf[gdf["codregion"] == 13]
+rm.plot(ax=ax2, column="p6_eb", cmap=CMAP_SEQ, scheme="fisherjenks", k=6,
+        edgecolor="white", linewidth=0.4,
+        missing_kwds={"color": GRID})
+ax2.set_axis_off()
+ax2.set_title("Metropolitan Region", fontsize=11)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "mapa_nacional")
+(gdf_datos[["IdComuna", "Comuna", "Region", "den_6m", "p6", "p6_eb"]]
+ .to_csv(OUT / f"lme6_comunal_{ULTIMO_COMPLETO}.csv", index=False))
+```
+
+## Global spatial autocorrelation and its evolution
+
+```{python}
+#| label: moran-evolucion
+#| code-summary: "Moran's I by year (permutations)"
+from libpysal.weights import Queen, KNN, attach_islands
+
+def pesos_para(g):
+    """Queen with topological tolerance (250 m buffer) + KNN-1 for true islands."""
+    gb = g.copy()
+    gb["geometry"] = g.geometry.buffer(250)   # fixes digitization gaps
+    w = Queen.from_dataframe(gb, use_index=False, silence_warnings=True)
+    if w.islands:
+        cent = g.copy()
+        cent["geometry"] = g.geometry.centroid
+        w_knn = KNN.from_dataframe(cent, k=1, silence_warnings=True)
+        w = attach_islands(w, w_knn)
+    w.transform = "r"
+    return w
+
+morans = []
+for anio in range(2009, ULTIMO_COMPLETO + 1):
+    d = comunal_anual(anio)
+    g = shp.merge(d, on="IdComuna", how="inner").reset_index(drop=True)
+    w = pesos_para(g)
+    mi = esda.Moran(g["p6_eb"].values, w, permutations=999)
+    morans.append({"Ano": anio, "I": mi.I, "p_sim": mi.p_sim, "EI": mi.EI})
+morans = pd.DataFrame(morans)
+
+# sensitivity (2024): crude rate vs EB vs the Assunção–Reis rate statistic
+d24 = comunal_anual(ULTIMO_COMPLETO)
+g24 = shp.merge(d24, on="IdComuna", how="inner").reset_index(drop=True)
+w24s = pesos_para(g24)
+mi_cruda = esda.Moran(g24["p6"].values, w24s, permutations=999)
+mi_eb24 = esda.Moran(g24["p6_eb"].values, w24s, permutations=999)
+mi_rate = esda.moran.Moran_Rate(g24["lme_6m"].values, g24["den_6m"].values,
+                                w24s, permutations=999)
+nota(f"**Sensitivity {ULTIMO_COMPLETO}**: crude I = {mi_cruda.I:.3f} "
+     f"(p = {mi_cruda.p_sim:.3f}) | EB I = {mi_eb24.I:.3f} (p = {mi_eb24.p_sim:.3f}) | "
+     f"Assunção–Reis I = {mi_rate.I:.3f} (p = {mi_rate.p_sim:.3f}) — the "
+     "autocorrelation is robust to the treatment of rate instability.")
+boton_tabla(morans.round(3), "moran_anual")
+```
+
+```{python}
+#| label: fig-moran
+#| code-summary: "Evolution of Moran's I"
+#| fig-cap: "Global Moran's I of municipal EBF at the 6th month (EB rates), 2009–2024. Row-standardized Queen weights (islands connected via KNN-1); inference by 999 permutations. Filled dots: p ≤ 0.05."
+fig, ax = plt.subplots(figsize=(9, 4.2))
+sig = morans["p_sim"] <= 0.05
+ax.axhline(morans["EI"].mean(), color=MUT, lw=1, ls=":")
+ax.annotate("E[I] (independence)", (morans["Ano"].iloc[0], morans["EI"].mean()),
+            xytext=(0, 5), textcoords="offset points", color=MUT, fontsize=8)
+ax.plot(morans["Ano"], morans["I"], color=PAL[0], lw=2)
+ax.scatter(morans.loc[sig, "Ano"], morans.loc[sig, "I"],
+           color=PAL[0], s=42, zorder=3, label="p ≤ 0.05")
+ax.scatter(morans.loc[~sig, "Ano"], morans.loc[~sig, "I"],
+           facecolor="white", edgecolor=PAL[0], s=42, zorder=3, label="n.s.")
+ax.set_ylabel("Moran's I")
+ax.set_xlabel("Year")
+ax.set_title("Evolution of the spatial autocorrelation of EBF at the 6th month")
+ax.legend(frameon=False)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "moran")
+```
+
+### Spatial autocorrelation by age at check-up
+
+```{python}
+#| label: fig-moran-edades
+#| code-summary: "Annual Moran's I for the 1st, 3rd and 6th month"
+#| fig-cap: "Evolution of Moran's I of municipal EBF (EB rates) by age at check-up, 2009–2024. Filled dots: p ≤ 0.05 (999 permutations)."
+morans_edad = []
+for edad in ("1m", "3m", "6m"):
+    for anio in range(2009, ULTIMO_COMPLETO + 1):
+        d = comunal_anual(anio, edad=edad)
+        if len(d) < 30:
+            continue
+        g = shp.merge(d, on="IdComuna", how="inner").reset_index(drop=True)
+        w = pesos_para(g)
+        mi = esda.Moran(g["p6_eb"].values, w, permutations=999)
+        morans_edad.append({"edad": edad, "Ano": anio, "I": mi.I, "p": mi.p_sim})
+morans_edad = pd.DataFrame(morans_edad)
+
+fig, ax = plt.subplots(figsize=(9.5, 4.6))
+ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+ax.axhline(0, color=MUT, lw=1, ls=":")
+for i, edad in enumerate(("1m", "3m", "6m")):
+    s = morans_edad[morans_edad["edad"] == edad]
+    ax.plot(s["Ano"], s["I"], color=PAL[i], lw=2, label=ETIQ_EDAD[edad])
+    sig = s["p"] <= 0.05
+    ax.scatter(s.loc[sig, "Ano"], s.loc[sig, "I"], color=PAL[i], s=34, zorder=3)
+    ax.scatter(s.loc[~sig, "Ano"], s.loc[~sig, "I"], facecolor="white",
+               edgecolor=PAL[i], s=34, zorder=3)
+ax.set_ylabel("Moran's I")
+ax.set_xlabel("Year")
+ax.set_title("Spatial autocorrelation of EBF by age at check-up")
+ax.legend(frameon=False)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "moran_edades")
+```
+
+## Local clusters (LISA) with FDR correction
+
+```{python}
+#| label: lisa
+#| code-summary: "Local Moran with FDR and cluster classification"
+w25 = pesos_para(gdf_datos)
+lisa = esda.Moran_Local(gdf_datos["p6_eb"].values, w25,
+                        permutations=9999, seed=SEED)
+umbral_fdr = esda.fdr(lisa.p_sim, 0.05)
+mapa_q = {1: "HH", 2: "LH", 3: "LL", 4: "HL"}
+
+def clasificar_lisa(pmax):
+    et = np.array(["ns"] * len(gdf_datos), dtype=object)
+    sig = lisa.p_sim <= pmax
+    et[sig] = [mapa_q[q] for q in lisa.q[sig]]
+    return et
+
+gdf_datos["lisa"] = clasificar_lisa(0.05)          # conventional criterion
+gdf_datos["lisa_fdr"] = clasificar_lisa(umbral_fdr)  # conservative criterion
+
+nombres_cl = {"HH": "High-High (hot spot)", "LL": "Low-Low (cold spot)",
+              "LH": "Low-High", "HL": "High-Low", "ns": "Not significant"}
+conteo = pd.DataFrame({
+    "p ≤ 0.05": pd.Series(gdf_datos["lisa"]).value_counts(),
+    "FDR 5%": pd.Series(gdf_datos["lisa_fdr"]).value_counts(),
+}).fillna(0).astype(int).rename(index=nombres_cl)
+nota(f"**FDR threshold** (α = 0.05, {len(gdf_datos)} simultaneous tests): "
+     f"p ≤ {umbral_fdr:.5f}.")
+boton_tabla(conteo, "lisa_conteo_clusters")
+```
+
+```{python}
+#| label: fig-lisa
+#| code-summary: "LISA cluster map"
+#| fig-cap: "LISA clusters of EBF at the 6th month (2024, EB rates) under the conventional criterion (p ≤ 0.05); municipalities that additionally survive the 5% FDR correction are outlined in black. Red: high EBF surrounded by high (HH); blue: low surrounded by low (LL)."
+orden_lisa = ["HH", "HL", "LH", "LL", "ns"]
+etiquetas_lisa = {"HH": "High-High", "HL": "High-Low", "LH": "Low-High",
+                  "LL": "Low-Low", "ns": "Not significant"}
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.5, 10),
+                               gridspec_kw={"width_ratios": [1, 1.35]})
+for etq in orden_lisa:
+    capa = gdf_datos[gdf_datos["lisa"] == etq]
+    if len(capa):
+        capa.plot(ax=ax1, color=COL_LISA[etq], edgecolor="white", linewidth=0.15)
+        capa[capa["codregion"] == 13].plot(ax=ax2, color=COL_LISA[etq],
+                                           edgecolor="white", linewidth=0.4)
+capa_fdr = gdf_datos[gdf_datos["lisa_fdr"] != "ns"]
+if len(capa_fdr):
+    capa_fdr.plot(ax=ax1, facecolor="none", edgecolor=INK, linewidth=0.7)
+    capa_fdr[capa_fdr["codregion"] == 13].plot(ax=ax2, facecolor="none",
+                                               edgecolor=INK, linewidth=0.9)
+import matplotlib.patches as mpatches
+ax1.legend(handles=[mpatches.Patch(color=COL_LISA[e], label=etiquetas_lisa[e])
+                    for e in orden_lisa]
+                   + [mpatches.Patch(facecolor="none", edgecolor=INK,
+                                     label="Survives FDR 5%")],
+           loc="center left", fontsize=8, frameon=False)
+ax1.set_axis_off(); ax2.set_axis_off()
+ax1.set_title(f"LISA clusters — Chile, {ULTIMO_COMPLETO}", fontsize=11)
+ax2.set_title("Metropolitan Region", fontsize=11)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "lisa")
+```
+
+## Spatio-temporal persistence of the clusters
+
+```{python}
+#| label: persistencia
+#| code-summary: "Cluster persistence 2019–2024 and tercile transitions"
+#| fig-cap: "Persistence of LISA clusters (years in which each municipality was HH or LL with p ≤ 0.05, 2019–2024). Multi-year persistence reduces the probability that an isolated false positive is classified as a stable cluster, although the annual tests are not independent of each other (same underlying spatial process), so this is not a formal multiple-comparison control."
+anios_persist = list(range(2019, ULTIMO_COMPLETO + 1))
+registro_lisa = {}
+for anio in anios_persist:
+    d = comunal_anual(anio)
+    g = shp.merge(d, on="IdComuna", how="inner").reset_index(drop=True)
+    w = pesos_para(g)
+    li = esda.Moran_Local(g["p6_eb"].values, w, permutations=999, seed=SEED)
+    et = np.array(["ns"] * len(g), dtype=object)
+    et[li.p_sim <= 0.05] = [mapa_q[q] for q in li.q[li.p_sim <= 0.05]]
+    registro_lisa[anio] = pd.Series(et, index=g["IdComuna"]).replace(
+        {"LH": "ns", "HL": "ns"})
+
+persist = pd.DataFrame(registro_lisa)
+n_hh = (persist == "HH").sum(axis=1)
+n_ll = (persist == "LL").sum(axis=1)
+persistencia = pd.DataFrame({"HH_anios": n_hh, "LL_anios": n_ll})
+persistencia["clase"] = np.select(
+    [persistencia["HH_anios"] >= 4, persistencia["LL_anios"] >= 4,
+     persistencia["HH_anios"] >= 1, persistencia["LL_anios"] >= 1],
+    ["Persistent HH", "Persistent LL", "Intermittent HH", "Intermittent LL"],
+    default="Never significant")
+
+g_pers = shp.merge(persistencia.reset_index(), on="IdComuna", how="left")
+col_pers = {"Persistent HH": PAL[5], "Intermittent HH": "#f4a9a8",
+            "Persistent LL": PAL[0], "Intermittent LL": "#9ec5f4",
+            "Never significant": GRID}
+fig, ax = plt.subplots(figsize=(6, 10))
+for clase, color in col_pers.items():
+    capa = g_pers[g_pers["clase"] == clase]
+    if len(capa):
+        capa.plot(ax=ax, color=color, edgecolor="white", linewidth=0.15)
+g_pers[g_pers["clase"].isna()].plot(ax=ax, color="white",
+                                    edgecolor=GRID, linewidth=0.15)
+ax.legend(handles=[mpatches.Patch(color=c, label=l) for l, c in col_pers.items()],
+          loc="center left", fontsize=8, frameon=False)
+ax.set_axis_off()
+ax.set_title("Persistence of EBF₆ LISA clusters, 2019–2024", fontsize=11)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "persistencia")
+
+tabla_pers = (persistencia["clase"].value_counts().to_frame("Municipalities"))
+boton_tabla(tabla_pers, "lisa_persistencia")
+```
+
+```{python}
+#| label: markov
+#| code-summary: "Tercile transition matrix (2009–2013 → 2021–2024)"
+#| tbl-cap: "Territorial mobility: transition between terciles of EBF at the 6th month from the 2009–2013 five-year period to the 2021–2024 four-year period (row probabilities)."
+def promedio_periodo(anios):
+    d = (cm[cm["Ano"].isin(anios)]
+         .groupby("IdComuna")[["lme_6m", "den_6m"]].sum())
+    d = d[d["den_6m"] >= 150]
+    return 100 * d["lme_6m"] / d["den_6m"]
+
+p_ini = promedio_periodo(range(2009, 2014))
+p_fin = promedio_periodo(range(2021, ULTIMO_COMPLETO + 1))
+ambos = pd.DataFrame({"ini": p_ini, "fin": p_fin}).dropna()
+ambos["terc_ini"] = pd.qcut(ambos["ini"], 3, labels=["T1 (low)", "T2", "T3 (high)"])
+ambos["terc_fin"] = pd.qcut(ambos["fin"], 3, labels=["T1 (low)", "T2", "T3 (high)"])
+trans = pd.crosstab(ambos["terc_ini"], ambos["terc_fin"], normalize="index").round(2)
+
+from scipy.stats import chi2_contingency
+chi2, p_chi, *_ = chi2_contingency(pd.crosstab(ambos["terc_ini"], ambos["terc_fin"]))
+nota(f"n = {len(ambos)} municipalities | χ² = {chi2:.1f}, p = {p_chi:.1e} — "
+     "strong persistence of territorial rank.")
+boton_tabla(trans, "transicion_terciles")
+```
+
+# Territorial inequality
+
+```{python}
+#| label: fig-desigualdad
+#| code-summary: "Weighted Gini and Theil; Theil decomposition"
+#| fig-cap: "Territorial inequality of EBF at the 6th month, 2009–2024. Left: weighted Gini and p90/p10 ratio across municipalities. Right: Theil index decomposed into between-region and within-region components."
+def gini_ponderado(x, w):
+    idx = np.argsort(x)
+    x, w = np.asarray(x)[idx], np.asarray(w)[idx]
+    cw = np.cumsum(w) - 0.5 * w
+    cw /= w.sum()
+    mu = np.average(x, weights=w)
+    return 2 * np.sum(w * (x - mu) * (cw - 0.5)) / (w.sum() * mu)
+
+def percentil_ponderado(x, w, q):
+    idx = np.argsort(x)
+    x, w = np.asarray(x)[idx], np.asarray(w)[idx]
+    c = np.cumsum(w) / np.sum(w)
+    return np.interp(q, c, x)
+
+def theil_descompuesto(df):
+    mu = np.average(df["p6"], weights=df["den_6m"])
+    w = df["den_6m"] / df["den_6m"].sum()
+    r = df["p6"] / mu
+    T_total = np.sum(w * r * np.log(np.where(r > 0, r, 1)))
+    entre, dentro = 0.0, 0.0
+    for _, g in df.groupby("region"):
+        wg = g["den_6m"].sum() / df["den_6m"].sum()
+        mug = np.average(g["p6"], weights=g["den_6m"])
+        entre += wg * (mug / mu) * np.log(mug / mu)
+        wgi = g["den_6m"] / g["den_6m"].sum()
+        rgi = g["p6"] / mug
+        dentro += wg * (mug / mu) * np.sum(wgi * rgi * np.log(np.where(rgi > 0, rgi, 1)))
+    return T_total, entre, dentro
+
+com_reg = (cm[cm["Ano"] <= ULTIMO_COMPLETO]
+           .groupby(["Ano", "IdComuna", "region"])[["lme_6m", "den_6m"]]
+           .sum().reset_index())
+com_reg = com_reg[com_reg["den_6m"] >= 30]
+com_reg["p6"] = 100 * com_reg["lme_6m"] / com_reg["den_6m"]
+
+filas = []
+for anio, d in com_reg.groupby("Ano"):
+    T, entre, dentro = theil_descompuesto(d)
+    filas.append({
+        "Ano": anio,
+        "gini": gini_ponderado(d["p6"], d["den_6m"]),
+        "p90_p10": (percentil_ponderado(d["p6"], d["den_6m"], 0.9)
+                    / percentil_ponderado(d["p6"], d["den_6m"], 0.1)),
+        "theil": T, "theil_entre": entre, "theil_dentro": dentro,
+    })
+desig = pd.DataFrame(filas).set_index("Ano")
+desig.round(4).to_csv(OUT / "desigualdad_territorial.csv")
+
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.4))
+ax1.plot(desig.index, desig["gini"], color=PAL[0], lw=2, marker="o", ms=4,
+         label="Weighted Gini")
+ax1b_vals = desig["p90_p10"]
+ax1.plot(desig.index, (ax1b_vals - ax1b_vals.min()) /
+         (ax1b_vals.max() - ax1b_vals.min()) * desig["gini"].max(),
+         color=PAL[2], lw=1.6, marker="s", ms=3.5,
+         label="p90/p10 (rescaled)")
+ax1.set_title("Inequality across municipalities")
+ax1.set_ylabel("Index")
+ax1.legend(frameon=False)
+
+ax2.stackplot(desig.index, desig["theil_entre"], desig["theil_dentro"],
+              colors=[PAL[0], "#9ec5f4"],
+              labels=["Between regions", "Within regions"])
+ax2.set_title("Theil index (decomposition)")
+ax2.set_ylabel("Theil")
+ax2.legend(frameon=False, loc="upper right")
+for ax in (ax1, ax2):
+    ax.set_xlabel("Year")
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "desigualdad")
+pct_entre = 100 * desig["theil_entre"] / desig["theil"]
+nota(f"**Between-region component of the Theil index**: {pct_entre.iloc[0]:.0f}% (2009) → "
+     f"{pct_entre.iloc[-1]:.0f}% ({ULTIMO_COMPLETO}) — most of the territorial "
+     "inequality occurs within regions.")
+```
+
+# Models
+
+## National panel 2009–2024: adjusted trajectory
+
+```{python}
+#| label: glm-panel
+#| code-summary: "Binomial GLM with year and region fixed effects, municipality-clustered SEs"
+#| fig-cap: "Odds ratios of EBF at the 6th month by year (reference 2010, first year with complete municipal coverage), adjusted for region, with 95% CIs robust to clustering by municipality."
+import patsy
+
+pnl = com_reg.copy()
+pnl["fracasos"] = pnl["den_6m"] - pnl["lme_6m"]
+
+# reference = 2010, first year with complete municipal coverage (2009: ~302 reporting)
+X_glm = patsy.dmatrix("C(Ano, Treatment(reference=2010)) + C(region)",
+                      pnl, return_type="dataframe")
+mod_glm = sm.GLM(pnl[["lme_6m", "fracasos"]], X_glm,
+                 family=sm.families.Binomial()).fit(
+    cov_type="cluster", cov_kwds={"groups": pnl["IdComuna"]})
+
+coefs = mod_glm.params.filter(like="C(Ano")
+ci = mod_glm.conf_int().filter(like="C(Ano", axis=0)
+anios_or = [int(s.split("[T.")[1].rstrip("]")) for s in coefs.index]
+or_df = pd.DataFrame({
+    "Ano": anios_or, "OR": np.exp(coefs.values),
+    "lo": np.exp(ci[0].values), "hi": np.exp(ci[1].values)}).set_index("Ano")
+
+fig, ax = plt.subplots(figsize=(9, 4.4))
+ax.axhline(1, color=MUT, lw=1, ls=":")
+ax.errorbar(or_df.index, or_df["OR"],
+            yerr=[or_df["OR"] - or_df["lo"], or_df["hi"] - or_df["OR"]],
+            fmt="o", color=PAL[0], ms=5, lw=1.4, capsize=2)
+ax.set_ylabel("EBF₆ OR (ref. 2010)")
+ax.set_xlabel("Year")
+ax.set_title("Adjusted national trajectory of EBF at the 6th month (binomial GLM)")
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "glm_panel")
+```
+
+## Spatial regression (2024 cross-section)
+
+```{python}
+#| label: spreg
+#| code-summary: "OLS with LM diagnostics, ML-Lag and ML-Error"
+# internal REM covariates: size (log check-ups) and composition of the check-ups
+comp = cm[cm["Ano"] == ULTIMO_COMPLETO].groupby("IdComuna").agg(
+    den_6m=("den_6m", "sum"), lme_6m=("lme_6m", "sum"),
+    den_total=("den_total", "sum"), den_po=("den_po", "sum"),
+    den_mig=("den_mig", "sum")).reset_index()
+comp = comp[comp["den_6m"] >= 30]
+comp["p6_eb"] = 100 * eb_suavizar(comp["lme_6m"], comp["den_6m"])
+comp["log_den"] = np.log(comp["den_6m"])
+comp["pct_po"] = 100 * comp["den_po"] / comp["den_total"].replace(0, np.nan)
+comp["pct_mig"] = 100 * comp["den_mig"] / comp["den_total"].replace(0, np.nan)
+comp = comp.dropna(subset=["pct_po", "pct_mig"])
+
+g_mod = shp.merge(comp, on="IdComuna", how="inner").reset_index(drop=True)
+w_mod = pesos_para(g_mod)
+
+y = g_mod[["p6_eb"]].values
+X = g_mod[["log_den", "pct_po", "pct_mig"]].values
+nombres_x = ["log(6th-month check-ups)", "% Indigenous peoples", "% migrants"]
+
+ols = spreg.OLS(y, X, w=w_mod, spat_diag=True, moran=True,
+                name_y="LME6_EB", name_x=nombres_x)
+lag = spreg.ML_Lag(y, X, w=w_mod, name_y="LME6_EB", name_x=nombres_x)
+err = spreg.ML_Error(y, X, w=w_mod, name_y="LME6_EB", name_x=nombres_x)
+
+def fila(nombre, m, extra=""):
+    return {"Model": nombre, "AIC": round(getattr(m, "aic", np.nan), 1),
+            "Pseudo/R²": round(getattr(m, "pr2", getattr(m, "r2", np.nan)), 3),
+            "Spatial parameter": extra}
+
+comp_tab = pd.DataFrame([
+    fila("OLS", ols),
+    fila("Spatial lag (ML-Lag)", lag, f"ρ = {float(lag.rho):.3f}"),
+    fila("Spatial error (ML-Error)", err, f"λ = {float(err.lam):.3f}"),
+])
+nota(f"**LM diagnostics (OLS)**: LM-lag p = {ols.lm_lag[1]:.4f} | "
+     f"LM-error p = {ols.lm_error[1]:.4f} | robust LM-lag p = {ols.rlm_lag[1]:.4f} | "
+     f"robust LM-error p = {ols.rlm_error[1]:.4f}. Anselin–Florax rule: with both "
+     "robust LM tests non-significant, the diagnostics do not discriminate between "
+     "spatial lag and spatial error; both specifications are reported without "
+     "declaring a 'best' one.")
+
+# sensitivity: same specification on the CRUDE rate (the EB rate depends on
+# den_6m by construction, which makes part of the association with log_den mechanical)
+y_cruda = (100 * g_mod["lme_6m"] / g_mod["den_6m"]).values.reshape(-1, 1)
+err_crudo = spreg.ML_Error(y_cruda, X, w=w_mod, name_y="LME6_cruda", name_x=nombres_x)
+nota(f"**Sensitivity with the crude rate** (ML-Error): λ = {float(err_crudo.lam):.3f}; "
+     f"log(check-ups) coefficient: EB = {err.betas[1, 0]:.3f} vs crude = "
+     f"{err_crudo.betas[1, 0]:.3f}. The size coefficient is **not** interpretable "
+     "as a causal effect: part of it is an artifact of the EB shrinkage.")
+boton_tabla(comp_tab, "modelos_espaciales_comparacion")
+```
+
+```{python}
+#| label: spreg-coef
+#| code-summary: "Coefficients of both spatial specifications"
+#| tbl-cap: "Coefficients of the spatial lag (ML-Lag) and spatial error (ML-Error) models for municipal EBF at the 6th month (2024, EB rates). The robust LM diagnostics do not discriminate between specifications; the AIC slightly favors ML-Error."
+def tabla_coefs(m, param_esp, nombre_esp):
+    ee = np.sqrt(np.diag(m.vm))
+    variables = ["Constant"] + nombres_x + [nombre_esp]
+    coefs = list(m.betas.flatten()[:len(nombres_x) + 1]) + [float(param_esp)]
+    ees = list(ee[:len(nombres_x) + 1]) + [float(ee[-1])]
+    return pd.DataFrame({"Coef.": coefs, "SE": ees}, index=variables)
+
+t_lag = tabla_coefs(lag, lag.rho, "ρ (lag)").add_suffix(" ML-Lag")
+t_err = tabla_coefs(err, err.lam, "λ (error)").rename(
+    index={"λ (error)": "ρ (lag)"}).add_suffix(" ML-Error")
+coef_ambos = t_lag.join(t_err, how="outer").rename(
+    index={"ρ (lag)": "Spatial parameter (ρ / λ)"})
+boton_tabla(coef_ambos.round(3), "coeficientes_espaciales")
+```
+
+# Feeding composition and specific populations
+
+## Composition of feeding types at the 6th month (2017–2026)
+
+Since 2017 the REM disaggregates the feeding of children attending check-ups beyond
+EBF: breastfeeding with formula (mixed, 03500359), exclusive formula (03500360) and,
+since 2021, the variants with complementary feeding (03600140, 03600150). This makes
+it possible to reconstruct the **full composition** of feeding at the 6th month.
+
+```{python}
+#| label: fig-composicion
+#| code-summary: "100% composition of feeding at the 6th month"
+#| fig-cap: "Composition of infant feeding at the 6th-month check-up, 2017–2026 (percentage of children attending check-ups). 'Unclassified' is the residual (truncated at 0) between the denominator and the sum of categories; from 2024 the sum of categories slightly exceeds the denominator (~1 pp) due to recording inconsistencies. The vertical line marks 2021, when the form added the categories with complementary feeding. Years 2025–2026 provisional."
+CODIGOS_TIPO = [
+    ("A0200002", "EBF", PAL[0]),
+    ("A0200003", "BF + complementary feeding", PAL[1]),
+    ("03500359", "BF + formula (mixed)", PAL[2]),
+    ("03600140", "BF + formula + complementary", PAL[4]),
+    ("03500360", "Exclusive formula", PAL[5]),
+    ("03600150", "Formula + complementary", PAL[7]),
+]
+den6_anual = cm.groupby("Ano")["den_6m"].sum()
+partes_comp = {}
+for cod, etiqueta, _ in CODIGOS_TIPO:
+    t = arm[arm["codigo"] == cod].groupby("Ano")["6m"].sum()
+    partes_comp[etiqueta] = (100 * t / den6_anual).reindex(den6_anual.index).fillna(0)
+comp_df = pd.DataFrame(partes_comp).loc[2017:]
+comp_df["Unclassified"] = (100 - comp_df.sum(axis=1)).clip(lower=0)
+
+fig, ax = plt.subplots(figsize=(9.5, 5.4))
+ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+colores_comp = [c for _, _, c in CODIGOS_TIPO] + [GRID]
+ax.stackplot(comp_df.index, comp_df.T.values, labels=comp_df.columns,
+             colors=colores_comp, alpha=0.9)
+ax.axvline(2021, color=INK2, lw=1, ls=":")
+ax.annotate("new categories", (2021, 99), color=INK2, fontsize=8,
+            ha="center", va="top")
+ax.set_xlim(2017, 2026)
+ax.set_ylim(0, 100)
+ax.set_ylabel("% of children at the 6th-month check-up")
+ax.set_xlabel("Year")
+ax.set_title("Composition of feeding at the 6th month, 2017–2026")
+ax.legend(loc="center left", bbox_to_anchor=(1.01, 0.5), frameon=False, fontsize=8.5)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "composicion")
+comp_df.round(2).to_csv(OUT / "composicion_alimentacion_6m.csv")
+exceso_anios = comp_df.index[comp_df.drop(columns="Unclassified").sum(axis=1) > 100.5]
+nota("Before 2021, children with mixed feeding or formula **plus complementary "
+     "feeding** (codes 03600140 and 03600150) had no category of their own, so "
+     "the 'Unclassified' block is larger in 2017–2020: fine-grained comparison of "
+     "mixed categories is only valid from 2021."
+     + (f" In {', '.join(map(str, exceso_anios))} the sum of categories exceeds the "
+        "denominator (recording inconsistency; the residual is truncated at 0)."
+        if len(exceso_anios) else ""))
+```
+
+## Sex gap (2017–2022)
+
+```{python}
+#| label: fig-sexo
+#| code-summary: "EBF at the 6th month by sex"
+#| fig-cap: "EBF at the 6th month by infant sex, 2017–2022 (the only REM era with sex disaggregation). Bands: 95% Wilson CIs."
+sx = arm[(arm["codigo"].isin([COD_LME, COD_DEN])) &
+         (arm["Ano"].between(2017, 2022))]
+res_sx = []
+for sexo, color in [("H", PAL[0]), ("M", PAL[6])]:
+    col = f"6m_{sexo}"
+    if col not in sx.columns:
+        continue
+    t = sx.groupby(["Ano", "codigo"])[col].sum().unstack("codigo")
+    p = 100 * t[COD_LME] / t[COD_DEN]
+    lo, hi = proportion_confint(t[COD_LME], t[COD_DEN], method="wilson")
+    res_sx.append((sexo, p, 100 * lo, 100 * hi, color))
+
+fig, ax = plt.subplots(figsize=(8.5, 4.4))
+etiq_sx = {"H": "Boys", "M": "Girls"}
+for sexo, p, lo, hi, color in res_sx:
+    ax.plot(p.index, p.values, color=color, lw=2, marker="o", ms=4,
+            label=etiq_sx[sexo])
+    ax.fill_between(p.index, lo, hi, color=color, alpha=0.15, lw=0)
+ax.set_ylabel("EBF₆ (%)")
+ax.set_xlabel("Year")
+ax.set_title("Sex gap in EBF at the 6th month, 2017–2022")
+ax.legend(frameon=False)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "sexo")
+if len(res_sx) == 2:
+    dif = res_sx[1][1] - res_sx[0][1]
+    nota("**Girls − boys difference** (pp): "
+         + "; ".join(f"{a}: {v:+.1f}" for a, v in dif.round(1).items()) + ".")
+```
+
+```{python}
+#| label: fig-sexo-edades
+#| code-summary: "Sex gap by age at check-up"
+#| fig-cap: "Sex gap (girls − boys, percentage points) in EBF by age at check-up, 2017–2022."
+brechas_sx = {}
+for edad in ("1m", "3m", "6m"):
+    ch, cm_ = f"{edad}_H", f"{edad}_M"
+    t = sx.groupby(["Ano", "codigo"])[[ch, cm_]].sum()
+    lme_t = t.xs(COD_LME, level="codigo")
+    den_t = t.xs(COD_DEN, level="codigo")
+    p_h = 100 * lme_t[ch] / den_t[ch]
+    p_m = 100 * lme_t[cm_] / den_t[cm_]
+    brechas_sx[edad] = p_m - p_h
+
+fig, ax = plt.subplots(figsize=(8.5, 4.2))
+ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+ax.axhline(0, color=MUT, lw=1, ls=":")
+for i, (edad, b) in enumerate(brechas_sx.items()):
+    ax.plot(b.index, b.values, color=PAL[i], lw=2, marker="o", ms=4,
+            label=ETIQ_EDAD[edad])
+ax.set_ylabel("Girls − boys gap (pp)")
+ax.set_xlabel("Year")
+ax.set_title("Sex gap in EBF by age at check-up, 2017–2022")
+ax.legend(frameon=False)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "sexo_edades")
+```
+
+## Indigenous peoples and migrants (2021+)
+
+The Indigenous peoples and migrant columns have **substantially lower recording
+quality** than the rest of the section: the group denominator of A0200001 is
+underrecorded relative to the numerator (the accumulated migrant check-ups
+2021–2024 amount to ~1% of the total denominator, implausible given the migrant
+share of births) and municipality-month cells with numerators greater than their
+denominator abound. These analyses therefore use a specific treatment: inconsistent
+cells are **excluded from both sides** (numerator and denominator) instead of being
+truncated, the same criterion in both figures, and sensitivity is reported. The
+resulting gaps should be read as indicators of **recording quality as much as of
+breastfeeding practice**.
+
+```{python}
+#| label: equidad-datos
+#| code-summary: "Consistent preparation of the Indigenous/migrant data"
+eqc = {}
+for grupo in ("po", "mig", "total"):
+    lme_g = (arm[arm["codigo"] == COD_LME]
+             .groupby(["Ano", "Mes", "IdComuna", "region"])[grupo].sum())
+    den_g = (arm[arm["codigo"] == COD_DEN]
+             .groupby(["Ano", "Mes", "IdComuna", "region"])[grupo].sum())
+    t = pd.DataFrame({"lme": lme_g, "den": den_g}).fillna(0)
+    inconsistentes = t["lme"] > t["den"]
+    t.loc[inconsistentes, ["lme", "den"]] = 0.0  # exclusion from both sides
+    t["excluida"] = inconsistentes
+    eqc[grupo] = t.reset_index()
+excl_txt = {g: f"{int(t['excluida'].sum()):,}" for g, t in eqc.items()}
+nota("Municipality-month cells excluded due to inconsistent recording (numerator > "
+     f"denominator): Indigenous peoples {excl_txt['po']}, migrants "
+     f"{excl_txt['mig']}, total {excl_txt['total']}. **Sensitivity**: with "
+     "truncation (num := den) instead of exclusion, the migrant gap changes sign "
+     "in several regions; the results of this section are therefore strongly "
+     "dependent on the quality of the group-level recording.")
+```
+
+```{python}
+#| label: fig-equidad
+#| code-summary: "EBF gaps in specific populations"
+#| fig-cap: "EBF among Indigenous peoples and migrants relative to the national total, 2021–2026 (inconsistent cells excluded from numerator and denominator). In these REM columns EBF is not disaggregated by age at check-up, so the comparison is against the section total."
+filas_eq = []
+for grupo, etiqueta in [("po", "Indigenous peoples"), ("mig", "Migrants"),
+                        ("total", "Total")]:
+    t = (eqc[grupo][eqc[grupo]["Ano"] >= 2021]
+         .groupby("Ano")[["lme", "den"]].sum())
+    t = t[t["den"] > 0]
+    filas_eq.append(pd.DataFrame({
+        "Ano": t.index, "grupo": etiqueta, "p": 100 * t["lme"] / t["den"]}))
+eq_df = pd.concat(filas_eq)
+
+fig, ax = plt.subplots(figsize=(8.5, 4.4))
+colores_eq = {"Total": MUT, "Indigenous peoples": PAL[2], "Migrants": PAL[4]}
+for etiqueta, d in eq_df.groupby("grupo"):
+    ax.plot(d["Ano"], d["p"], lw=2, marker="o", ms=4,
+            color=colores_eq[etiqueta], label=etiqueta)
+ax.axvspan(2024.5, 2026.5, color=GRID, alpha=0.35, zorder=0)
+ax.set_ylabel("EBF (%) — section total")
+ax.set_xlabel("Year")
+ax.set_title("EBF in specific populations, 2021–2026")
+ax.legend(frameon=False)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "equidad")
+```
+
+```{python}
+#| label: fig-equidad-regional
+#| code-summary: "Regional gaps among Indigenous peoples and migrants"
+#| fig-cap: "EBF (section total) by region among Indigenous peoples and migrants relative to the total population, pooled 2021–2024, with inconsistent cells excluded from both sides. Each segment links the group's prevalence to the regional total; regions ordered north to south. A group's dot is omitted when the region accumulates fewer than 200 check-ups for that group over the period (unstable denominators); given the underrecording of the group denominators, these gaps reflect recording quality as much as breastfeeding practice."
+eqr_parts = {
+    g: (eqc[g][eqc[g]["Ano"].between(2021, ULTIMO_COMPLETO)]
+        .groupby("region")[["lme", "den"]].sum())
+    for g in ("po", "mig", "total")
+}
+UMBRAL_GRUPO = 200  # minimum accumulated check-ups per group and region
+eqr = pd.DataFrame({
+    "p_total": 100 * eqr_parts["total"]["lme"] / eqr_parts["total"]["den"],
+    "p_po": (100 * eqr_parts["po"]["lme"] / eqr_parts["po"]["den"])
+        .where(eqr_parts["po"]["den"] >= UMBRAL_GRUPO),
+    "p_mig": (100 * eqr_parts["mig"]["lme"] / eqr_parts["mig"]["den"])
+        .where(eqr_parts["mig"]["den"] >= UMBRAL_GRUPO),
+})
+eqr = eqr[eqr[["p_po", "p_mig"]].notna().any(axis=1)]
+orden_pres = [r for r in orden_reg if r in eqr.index]
+eqr = eqr.loc[orden_pres]
+omitidas = [f"{NOMBRES_REGION[r]} ({g})"
+            for g, col in (("Indigenous", "p_po"), ("migrants", "p_mig"))
+            for r in eqr.index[eqr[col].isna()]]
+
+fig, ax = plt.subplots(figsize=(9.5, 7))
+ypos = np.arange(len(eqr))[::-1]
+for y, (_, fila) in zip(ypos, eqr.iterrows()):
+    if np.isfinite(fila["p_po"]):
+        ax.plot([fila["p_total"], fila["p_po"]], [y + 0.16, y + 0.16],
+                color=PAL[2], lw=1.4, zorder=1)
+    if np.isfinite(fila["p_mig"]):
+        ax.plot([fila["p_total"], fila["p_mig"]], [y - 0.16, y - 0.16],
+                color=PAL[4], lw=1.4, zorder=1)
+ax.scatter(eqr["p_total"], ypos + 0.16, color=MUT, s=34, zorder=2)
+ax.scatter(eqr["p_total"], ypos - 0.16, color=MUT, s=34, zorder=2, label="Regional total")
+ax.scatter(eqr["p_po"], ypos + 0.16, color=PAL[2], s=44, zorder=3,
+           label="Indigenous peoples")
+ax.scatter(eqr["p_mig"], ypos - 0.16, color=PAL[4], s=44, zorder=3, label="Migrants")
+ax.set_yticks(ypos)
+ax.set_yticklabels([NOMBRES_REGION[r] for r in eqr.index], fontsize=9)
+ax.set_xlabel("EBF (%) — section total, 2021–2024")
+ax.set_title("Regional EBF gaps in specific populations")
+ax.legend(frameon=False, loc="lower right")
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "equidad_regional")
+if omitidas:
+    nota("Groups omitted due to a regional denominator < 200 accumulated check-ups: "
+         + "; ".join(omitidas) + ".")
+(eqr[["p_total", "p_po", "p_mig"]].round(2)
+ .rename(index=NOMBRES_REGION).to_csv(OUT / "brechas_regionales_po_mig.csv"))
+```
+
+## Neonatal dyads (2023+)
+
+Since 2023 the REM records breastfeeding in the **mother–newborn dyad** at the
+first check-ups of life: in 2023 with a single neonatal column and from 2024
+disaggregated into two windows (up to 10 days and between 11 and 28 days). This
+makes it possible to observe the starting point of EBF before the first month; the
+2023 point is shown in isolation because it is not comparable with the
+disaggregated windows.
+
+```{python}
+#| label: fig-diadas
+#| code-summary: "EBF in the neonatal dyads"
+#| fig-cap: "EBF at the dyad check-ups compared with the 1st and 6th month. In 2023 the REM recorded a single neonatal column (isolated diamond); the ≤10-day and 11–28-day windows exist from 2024 and are not comparable with 2023. Years 2025–2026 provisional."
+cols_diada = [c for c in ("diada_0_10", "diada_11_28") if f"den_{c}" in cm.columns]
+dd = cm[cm["Ano"] >= 2023].groupby("Ano")[
+    [f"lme_{c}" for c in cols_diada] + [f"den_{c}" for c in cols_diada]
+    + ["lme_1m", "den_1m", "lme_6m", "den_6m"]].sum()
+
+series_dd = {"Dyad ≤10 days": ("diada_0_10", PAL[6]),
+             "Dyad 11–28 days": ("diada_11_28", PAL[4]),
+             "1st month": ("1m", PAL[0]), "6th month": ("6m", PAL[2])}
+fig, ax = plt.subplots(figsize=(8.5, 4.6))
+ax.xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+for etiqueta, (clave, color) in series_dd.items():
+    if f"den_{clave}" not in dd.columns:
+        continue
+    den_s = dd[f"den_{clave}"].replace(0, np.nan)
+    p = (100 * dd[f"lme_{clave}"] / den_s).dropna()
+    if clave == "diada_11_28" and 2023 in p.index:
+        # 2023: single column without age disaggregation -> isolated point
+        ax.scatter([2023], [p.loc[2023]], color=color, marker="D", s=48, zorder=3,
+                   label="Dyad ≤28 days (single column 2023)")
+        p = p.drop(index=2023)
+    if p.empty:
+        continue
+    ax.plot(p.index, p.values, color=color, lw=2, marker="o", ms=5, label=etiqueta)
+ax.axvspan(2024.5, 2026.5, color=GRID, alpha=0.35, zorder=0)
+ax.set_ylabel("EBF (%)")
+ax.set_xlabel("Year")
+ax.set_title("EBF from the neonatal dyad to the 6th month, 2023–2026")
+ax.legend(frameon=False)
+plt.tight_layout()
+plt.show()
+boton_figura(fig, "diadas")
+```
+
+# Interactive map
+
+```{python}
+#| label: folium
+#| code-summary: "Interactive map (folium): EB rates and LISA clusters, 2024"
+import folium
+import branca.colormap as bcm
+
+g4326 = gdf_datos.to_crs(4326).copy()
+# simplified geometries (~200 m) to lighten the interactive HTML
+g4326["geometry"] = g4326.geometry.simplify(0.002, preserve_topology=True)
+g4326["p6_r"] = g4326["p6"].round(1)
+g4326["p6_eb_r"] = g4326["p6_eb"].round(1)
+g4326["den_r"] = g4326["den_6m"].astype(int)
+m = folium.Map(location=[-33.45, -70.66], zoom_start=5, tiles="cartodbpositron")
+
+vmin, vmax = g4326["p6_eb"].quantile([0.02, 0.98])
+cmap_fol = bcm.LinearColormap(SEQ_STEPS, vmin=vmin, vmax=vmax,
+                              caption=f"EBF at the 6th month (%, EB rates, {ULTIMO_COMPLETO})")
+
+folium.GeoJson(
+    g4326[["IdComuna", "Comuna", "Region", "p6_r", "p6_eb_r", "den_r", "lisa",
+           "geometry"]],
+    name=f"EBF₆ {ULTIMO_COMPLETO} (EB)",
+    style_function=lambda f: {
+        "fillColor": cmap_fol(f["properties"]["p6_eb_r"]),
+        "color": "white", "weight": 0.4, "fillOpacity": 0.85},
+    tooltip=folium.GeoJsonTooltip(
+        fields=["Comuna", "Region", "p6_r", "p6_eb_r", "den_r", "lisa"],
+        aliases=["Municipality", "Region", "Crude EBF₆ (%)", "EB EBF₆ (%)",
+                 "6th-month check-ups", "LISA cluster (p≤0.05)"],
+        localize=True),
+).add_to(m)
+
+capa_lisa = g4326[g4326["lisa"] != "ns"][["IdComuna", "Comuna", "lisa", "geometry"]]
+if len(capa_lisa):
+    folium.GeoJson(
+        capa_lisa,
+        name="LISA clusters (p ≤ 0.05)",
+        style_function=lambda f: {
+            "fillColor": COL_LISA[f["properties"]["lisa"]],
+            "color": "white", "weight": 0.4, "fillOpacity": 0.9},
+        tooltip=folium.GeoJsonTooltip(fields=["Comuna", "lisa"],
+                                      aliases=["Municipality", "Cluster"]),
+        show=False,
+    ).add_to(m)
+
+cmap_fol.add_to(m)
+folium.LayerControl(collapsed=False).add_to(m)
+
+# robust write: first to local disk, then copy with retries
+# (the project folder lives on a Google Drive filesystem that
+# occasionally times out on large writes)
+import tempfile, time as _time
+
+ruta_mapa = OUT / "mapa_interactivo_lme6_lisa.html"
+with tempfile.NamedTemporaryFile(suffix=".html", delete=False) as tmpf:
+    tmp_html = Path(tmpf.name)
+m.save(str(tmp_html))
+contenido = tmp_html.read_bytes()
+tmp_html.unlink()
+for intento in range(3):
+    try:
+        ruta_mapa.write_bytes(contenido)
+        break
+    except OSError:
+        if intento == 2:
+            raise
+        _time.sleep(5)
+nota(f"Interactive map saved to `{ruta_mapa.relative_to(RAIZ)}` "
+     f"({len(contenido) / 1048576:.1f} MB).")
+```
+
+The interactive map (EB rates with a municipal *tooltip* and a LISA cluster layer)
+is available at `output_files/stage4_en/mapa_interactivo_lme6_lisa.html`.
+
+# Discussion
+
+The main results of the 2009–2026 series can be summarized in seven findings:
+
+1. **National trajectory**: the series has two regimes separated by the 2015
+   structural break (44–45% → sustained rise up to ~62% in 2019); the ITS on the
+   post-break regime quantifies the **interruption associated with the pandemic**
+   (level drop and slope change in March 2020) and the absence of subsequent
+   recovery. This estimate is not a pure causal effect: the ~37% drop in the
+   denominator of check-ups in 2020 implies selection of the attending
+   subpopulation, and the counterfactual is a linear extrapolation of the
+   2015–2019 regime.
+2. **Persistent territorial heterogeneity**: global spatial autocorrelation is
+   positive and significant across practically the whole series, indicating that EBF
+   is not distributed randomly across the territory but in macro-zones of high and
+   low prevalence.
+3. **Stable clusters**: under the conventional criterion (p ≤ 0.05) the LISA
+   clusters show hot spots and cold spots that reappear year after year (2019–2024);
+   under the conservative FDR criterion only a small core of municipalities remains
+   significant in 2024, which bounds the evidence of strong local clustering. The
+   tercile transition matrix shows marked rank inertia: most municipalities remain
+   in their tercile of origin after more than a decade.
+4. **Inequality and convergence**: the Gini and Theil indices document the level and
+   evolution of territorial inequality; the Theil decomposition indicates how much
+   of it is explained between regions versus within them.
+5. **Population gaps**: the sex disaggregation (2017–2022) shows a small and stable
+   gap. The Indigenous peoples and migrant columns (2021+) exhibit regional
+   heterogeneity, but their denominators are underrecorded and the gaps change sign
+   depending on the treatment of the inconsistent cells: rather than conclusions
+   about breastfeeding practice, they are a call to improve the quality of the
+   group-level recording in the REM so that equity can be monitored.
+6. **The historical improvement was in retention, not initiation**: EBF at the 1st
+   month declined throughout the series, while the 6th/1st-month retention ratio
+   rose until 2019 (with part of the jump concentrated at the 2015 recording
+   break); after 2019 retention remains high and the deterioration is concentrated
+   in the initial level. Continued breastfeeding at one year is not comparable
+   across 2021 due to the form's re-coding; its extended version remains stable.
+   The neonatal dyads (2023+) add a pre-first-month starting point for future
+   monitoring.
+7. **Composition**: from 2021 the full disaggregation shows the relative weight of
+   mixed feeding and formula at the 6th month, and quantifies the "unclassified"
+   residual of the earlier form eras.
+
+# Limitations
+
+- **Administrative denominators**: prevalences are computed over children under
+  active well-child care in the public system (REM), not over population cohorts;
+  changes in check-up coverage (e.g., 2020) affect numerator and denominator
+  simultaneously.
+- **Form changes**: although the year-by-year mapping was validated against the
+  official dictionaries, the operational recording definitions may have changed
+  subtly across eras.
+- **Ecological fallacy and MAUP**: municipal-level associations are not individual
+  inferences, and the spatial results depend on the unit of aggregation.
+- **2025 being consolidated and 2026 preliminary**: excluded from models and
+  inference.
+- **ITS counterfactual**: it is a linear extrapolation of the 2015–2019 regime over
+  almost five years; the estimated gap relative to the observed series should be
+  read as an order of magnitude, with growing uncertainty over the horizon.
+- **Recording quality**: there are several thousand indicator×municipality-month
+  cells with numerators larger than the denominator (exact count reported in the
+  harmonization chunk; truncated to the denominator except in the Indigenous
+  peoples/migrants section, where they are excluded from both sides), the group
+  denominators for Indigenous peoples and migrants are substantially underrecorded
+  relative to their numerators, and the shapefile has topology gaps that were fixed
+  with a tolerance buffer. All of this is documented and handled explicitly, but it
+  is a reminder that the REM is an administrative register with errors at source.
+- The Indigenous peoples and migrant columns are not disaggregated by age at
+  check-up, so their prevalences are not strictly comparable with EBF₆.
+
+# References
+
+- Anselin, L. (1995). Local Indicators of Spatial Association—LISA. *Geographical Analysis*, 27(2), 93–115.
+- Bernal, J. L., Cummins, S., & Gasparrini, A. (2017). Interrupted time series regression for the evaluation of public health interventions. *International Journal of Epidemiology*, 46(1), 348–355.
+- Caldas de Castro, M., & Singer, B. (2006). Controlling the false discovery rate: a new application to account for multiple and dependent tests in local statistics of spatial association. *Geographical Analysis*, 38(2), 180–208.
+- Killick, R., Fearnhead, P., & Eckley, I. A. (2012). Optimal detection of changepoints with a linear computational cost. *JASA*, 107(500), 1590–1598.
+- Marshall, R. J. (1991). Mapping disease and mortality rates using empirical Bayes estimators. *Applied Statistics*, 40(2), 283–294.
+- Ministry of Health of Chile (MINSAL). REM Series Manuals, 2009–2026. DEIS.
+- Rey, S. J., & Anselin, L. (2010). PySAL: A Python library of spatial analytical methods. In *Handbook of Applied Spatial Analysis*. Springer.
+- Víctora, C. G., et al. (2016). Breastfeeding in the 21st century. *The Lancet*, 387(10017), 475–490.
+
+# Annex: column harmonization by year {#sec-anexo}
+
+```{python}
+#| label: anexo-mapeo
+#| code-summary: "Column→meaning harmonization table (EBF, A0200002)"
+#| tbl-cap: "Columns of code A0200002 (EBF) used by year and age at check-up, according to the official DEIS dictionaries."
+filas_anexo = []
+for anio_str, info in sorted(mapeo.items()):
+    cfg = info["codigos"].get(COD_LME, {})
+    fila = {"Year": anio_str, "Dictionary file": info["_archivo"]}
+    for e in EDADES:
+        fila[ETIQ_EDAD[e]] = "+".join(cfg.get("edad_cols", {}).get(e, [])) or "—"
+    fila["Indigenous"] = "+".join(cfg.get("po_cols", [])) or "—"
+    fila["Migrants"] = "+".join(cfg.get("mig_cols", [])) or "—"
+    filas_anexo.append(fila)
+boton_tabla(pd.DataFrame(filas_anexo).set_index("Year"), "anexo_mapeo_columnas")
+```
+
+```{python}
+#| label: anexo-qc
+#| code-summary: "ETL QC"
+#| tbl-cap: "ETL quality control by year (aggregated rows and anomalies)."
+boton_tabla(pd.DataFrame(qc_etl).T[["filas_agregadas", "comuna_vacia"]].rename(
+    columns={"filas_agregadas": "Aggregated rows", "comuna_vacia": "Rows without municipality"}), "anexo_qc_etl")
+```
