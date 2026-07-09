@@ -2,15 +2,15 @@
 
 ## 🇪🇸 Español
 
-Análisis doctoral de la **serie nacional completa 2009–2026** de lactancia materna en
+Análisis de la **serie nacional completa 2009–2026** de lactancia materna en
 Chile, construida desde los microdatos abiertos de los Resúmenes Estadísticos
 Mensuales (REM-A03) del DEIS-MINSAL (~77,5 millones de registros, agregados a un
 panel comuna×mes×año armonizado entre 18 años de formularios cambiantes).
 
 **Documentos** (GitHub Pages):
 
-- **[Etapa 4 — Análisis completo, versión en español](https://amarusimonaguerojimenez.github.io/Breastfeeding-Chile/stage4.html)**
-- **[Stage 4 — Full analysis, English version](https://amarusimonaguerojimenez.github.io/Breastfeeding-Chile/stage4_en.html)**
+- **[Análisis completo — versión en español](https://amarusimonaguerojimenez.github.io/Breastfeeding-Chile/analisis_lactancia_chile.html)**
+- **[Full analysis — English version](https://amarusimonaguerojimenez.github.io/Breastfeeding-Chile/breastfeeding_chile_analysis.html)**
 - [Índice bilingüe](https://amarusimonaguerojimenez.github.io/Breastfeeding-Chile/)
 
 Contenido: armonización longitudinal validada contra los diccionarios oficiales DEIS;
@@ -24,15 +24,15 @@ descarga en PNG a 600 dpi y cada tabla en Excel.
 
 ## 🇬🇧 English
 
-Doctoral-level analysis of Chile's **complete 2009–2026 national breastfeeding
+Analysis of Chile's **complete 2009–2026 national breastfeeding
 series**, built from the open microdata of the Monthly Statistical Summaries
 (REM-A03) of DEIS-MINSAL (~77.5 million records, aggregated into a
 municipality×month×year panel harmonized across 18 years of changing forms).
 
 **Documents** (GitHub Pages):
 
-- **[Stage 4 — Full analysis, English version](https://amarusimonaguerojimenez.github.io/Breastfeeding-Chile/stage4_en.html)**
-- **[Etapa 4 — Análisis completo, versión en español](https://amarusimonaguerojimenez.github.io/Breastfeeding-Chile/stage4.html)**
+- **[Full analysis — English version](https://amarusimonaguerojimenez.github.io/Breastfeeding-Chile/breastfeeding_chile_analysis.html)**
+- **[Análisis completo — versión en español](https://amarusimonaguerojimenez.github.io/Breastfeeding-Chile/analisis_lactancia_chile.html)**
 - [Bilingual index](https://amarusimonaguerojimenez.github.io/Breastfeeding-Chile/)
 
 Contents: longitudinal harmonization validated against the official DEIS code
@@ -52,20 +52,20 @@ python3 download_rem.py            # descarga y normaliza los datos REM del DEIS
 python3 etl_lactancia.py           # panel agregado comuna×mes×año (parquet)
 python3 crosswalk_comunas.py       # armonización territorial (Ñuble 2018, Marga Marga 2010)
 python3 build_mapeo.py <bruto.json>  # mapeo columna→significado por año
-quarto render docs/stage4.qmd      # documento en español
-quarto render docs/stage4_en.qmd   # English document
+quarto render docs/analisis_lactancia_chile.qmd    # documento en español
+quarto render docs/breastfeeding_chile_analysis.qmd # English document
 ```
 
 ## Estructura · Structure
 
 | Ruta / Path | Contenido / Contents |
 |---|---|
-| `docs/stage4.qmd` / `docs/stage4_en.qmd` | Análisis principal (ES/EN) · Main analysis |
+| `docs/analisis_lactancia_chile.qmd` / `docs/breastfeeding_chile_analysis.qmd` | Análisis principal (ES/EN) · Main analysis |
 | `docs/mapeo_columnas_rem.json` | Mapeo columna→significado por año · Per-year column mapping |
 | `docs/crosswalk_comunas.json` | Códigos comunales antiguos→vigentes · Municipality code crosswalk |
-| `docs/stage4_recursos*/` | Figuras 600 dpi y tablas Excel · 600-dpi figures & Excel tables |
+| `docs/recursos_analisis*/` | Figuras 600 dpi y tablas Excel · 600-dpi figures & Excel tables |
 | `download_rem.py`, `etl_lactancia.py`, `build_mapeo.py`, `crosswalk_comunas.py` | Pipeline de datos · Data pipeline |
-| `output_files/stage4*/` | CSV de resultados y mapa interactivo · Result CSVs & interactive map |
+| `output_files/lactancia_*/` | CSV de resultados y mapa interactivo · Result CSVs & interactive map |
 | `other_scripts/` | Etapas 1–3 (análisis exploratorios previos, RM 2019–2024) · Legacy stages 1–3 |
 
 **Fuente de datos · Data source**: [DEIS-MINSAL datos abiertos](https://deis.minsal.cl/#datosabiertos) — `SERIE_REM_{año}.zip`, sección de lactancia del REM-A03.

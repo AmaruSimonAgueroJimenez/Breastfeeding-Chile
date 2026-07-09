@@ -17,7 +17,7 @@ interrumpidas COVID-19), análisis geoespacial comunal (Moran, LISA, regresión
 espacial), desigualdad territorial (Gini, Theil), lactancia continuada, retención,
 composición de la alimentación y brechas poblacionales.
 
-**➡ [Etapa 4 — Análisis completo (versión en español)](stage4.html)**
+**➡ [Análisis completo (versión en español)](analisis_lactancia_chile.html)**
 
 ## 🇬🇧 English
 
@@ -28,14 +28,14 @@ series), municipal geospatial analysis (Moran's I, LISA, spatial regression),
 territorial inequality (Gini, Theil), continued breastfeeding, retention, feeding
 composition, and population gaps.
 
-**➡ [Stage 4 — Full analysis (English version)](stage4_en.html)**
+**➡ [Full analysis (English version)](breastfeeding_chile_analysis.html)**
 
 ---
 
 ### Análisis anteriores · Previous analyses
 
-Las etapas 1–3 (análisis exploratorios 2019–2024, Región Metropolitana) se conservan
+Los análisis exploratorios previos (2019–2024, Región Metropolitana) se conservan
 como scripts auxiliares en la carpeta [`other_scripts/`](https://github.com/amarusimonaguerojimenez/Breastfeeding-Chile/tree/main/other_scripts)
-del repositorio. · Stages 1–3 (exploratory analyses, 2019–2024, Metropolitan Region)
+del repositorio. · Previous exploratory analyses (2019–2024, Metropolitan Region)
 are kept as auxiliary scripts in the repository's
 [`other_scripts/`](https://github.com/amarusimonaguerojimenez/Breastfeeding-Chile/tree/main/other_scripts) folder.
